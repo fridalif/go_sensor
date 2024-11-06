@@ -18,6 +18,11 @@ type Config struct {
 	Timeout time.Duration `json:"timeout"`
 }
 
+type Rule struct {
+	Layer string `json:"layer"`
+	Definition map[string]string `json:"definition"`
+}
+
 func sniffer(iface string, wg *sync.WaitGroup, cfg *Config) {
 	defer wg.Done()
 	if iface == "dbus-system" || iface == "dbus-session" {
