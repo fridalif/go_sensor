@@ -30,7 +30,7 @@ type Rule struct {
 var ( rules []Rule )
 
 func initRules() {
-	firstRule := Rule{
+	firstRuleIPv4 := Rule{
 		Layer: "IPv4",
 		Definition: map[string]interface{}{
 			"SrcIp": "127.0.0.1",
@@ -39,25 +39,64 @@ func initRules() {
 		},
 	}
 
-	rules = append(rules, firstRule)
+	firstRuleIPv6 := Rule{
+		Layer: "IPv6",
+		Definition: map[string]interface{}{
+			"SrcIp": "64:ff9b::142a:491a",
+			"DstIp": "2a03:d000:42a0:bf0c:516b:b87e:577f:5f36",
+		},
+	}
+	rules = append(rules, firstRuleIPv4, firstRuleIPv6)
 }
+
+
+
+
+//Проверка парвил IPv6
+func checkIPv6(ipv6Layer gopacket.Layer) bool {
+	ipv6, ok := ipv6Layer.(*layers.IPv6)
+	if !ok {
+		log.Println("ERROR: Ошибка преобразования к типу IPv6")
+		return false
+	}
+	for _, rule := range rules {
+		if rule.Layer != "IPv6" {
+			continue
+		}
+		thisRule := true
+		for key, value := range rule.Definition {
+			switch key {
+				case "SrcIp":
+					if ipv6.SrcIP.String() != value && value != "*" {
+						thisRule = false
+						break
+					}
+					continue
+				case "DstIp":
+					if ipv6.DstIP.String() != value && value != "*" {
+						thisRule = false
+						break
+					}
+					continue
+				default:
+					thisRule = false
+					log.Println("ERROR: Неизвестный ключ в правиле IPv6:", key)
+			}
+		}
+		if thisRule {
+			fmt.Println("Правило прошло проверку")
+			return true
+		}
+	}
+	return false
+}
+//Проверка парвил IPv4
 func checkIPv4(ipLayer gopacket.Layer) bool {
 	ipv4, ok := ipLayer.(*layers.IPv4)
 	if !ok {
 		log.Println("ERROR: Ошибка преобразования к типу IPv4")
 		return false
 	}
-	/*
-	Version    uint8
-	IHL        uint8
-	TOS        uint8
-	Length     uint16
-	TTL        uint8
-	Protocol   IPProtocol
-	Checksum   uint16
-	SrcIP      net.IP
-	DstIP      net.IP
-	*/
 	for _, rule := range rules {
 		if rule.Layer != "IPv4" {
 			continue
@@ -70,53 +109,45 @@ func checkIPv4(ipLayer gopacket.Layer) bool {
 						thisRule = false
 						break
 					}
-					continue
 				case "DstIp":
 					if ipv4.DstIP.String() != value && value != "*" {
 						thisRule = false
 						break
 					}
-					continue
 				case "Protocol":
 					if ipv4.Protocol.String() != value && value != "*" {
 						thisRule = false
 						break
 					}
-					continue
 				case "IHL": 
 					if value != -1 && uint8(value.(int)) != ipv4.IHL {
 						thisRule = false
 						break
 					}
-					continue
 				case "TOS": 
 					if value != -1 && uint8(value.(int)) != ipv4.TOS {
 						thisRule = false
 						break
 					}
-					continue
 				case "Length": 
 					if value != -1 && uint16(value.(int)) != ipv4.Length {
 						thisRule = false
 						break
 					}
-					continue
 				case "TTL": 
 					if value != -1 && ipv4.TTL != uint8(value.(int)) {
 						fmt.Println(ipv4.TTL, value)
 						thisRule = false
 						break
 					}
-					continue
 				case "Checksum": 
 					if value != -1 && uint16(value.(int)) != ipv4.Checksum {
 						thisRule = false
 						break
 					}
-					continue
 				default:
 					thisRule = false
-					log.Println("ERROR: Неизвестный ключ в правиле:", key)
+					log.Println("ERROR: Неизвестный ключ в правиле IPv4:", key)
 			}
 		}
 		if thisRule {
@@ -139,20 +170,18 @@ func sniffer(iface string, wg *sync.WaitGroup, cfg *Config) {
 		return
     }
     defer handle.Close()
-	//Если нужны фильтры
-	//if err := handle.SetBPFFilter(filter); err != nil {
-	//	log.Println("ERROR: Ошибка установки фильтра:",err)
-	//	return
-	//}
 
+	//Запуск прослушивания
 	source := gopacket.NewPacketSource(handle, handle.LinkType())
 	for packet := range source.Packets() {
-		fmt.Println(iface)
-		fmt.Println(cfg.ComputerName)
-		ipLayer := packet.Layer(layers.LayerTypeIPv4)
+		/*ipLayer := packet.Layer(layers.LayerTypeIPv4)
         if ipLayer != nil {
 			checkIPv4(ipLayer)
-        }
+        }*/
+		ipv6Layer := packet.Layer(layers.LayerTypeIPv6)
+		if ipv6Layer != nil {
+			checkIPv6(ipv6Layer)
+		}
 	}
 }
 
