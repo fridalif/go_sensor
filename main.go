@@ -20,6 +20,9 @@ type Config struct {
 
 func sniffer(iface string, wg *sync.WaitGroup, cfg *Config) {
 	defer wg.Done()
+	if iface == "dbus-system" || iface == "dbus-session" {
+		return
+	}
 	handle, err := pcap.OpenLive(iface, int32(cfg.Snaplen), cfg.Promisc, cfg.Timeout)
     if err != nil {
         log.Println("ERROR: Ошибка открытия интерфейса:", err)
@@ -33,7 +36,9 @@ func sniffer(iface string, wg *sync.WaitGroup, cfg *Config) {
 	//}
 
 	source := gopacket.NewPacketSource(handle, handle.LinkType())
+	fmt.Println(iface)
 	for packet := range source.Packets() {
+		fmt.Println(iface)
 		fmt.Println(cfg.ComputerName,packet)
 	}
 }
@@ -85,6 +90,7 @@ func main() {
 
 	for _, device := range devices {
 		wg.Add(1)
+		
 		go sniffer(device.Name, wg, cfg)
 	}
 	wg.Wait()
