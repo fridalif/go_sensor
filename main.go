@@ -36,10 +36,12 @@ func sniffer(iface string, wg *sync.WaitGroup, cfg *Config) {
 	//}
 
 	source := gopacket.NewPacketSource(handle, handle.LinkType())
-	fmt.Println(iface)
 	for packet := range source.Packets() {
 		fmt.Println(iface)
-		fmt.Println(cfg.ComputerName,packet)
+		fmt.Println(cfg.ComputerName)
+		for _, layer := range packet.Layers() {
+			fmt.Println(layer.LayerType())
+		}
 	}
 }
 
