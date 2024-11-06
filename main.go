@@ -57,24 +57,11 @@ func initRules() {
 	rules = append(rules, firstRuleIPv4, firstRuleIPv6, firstRuleTCP)
 }
 
-
-/*
-type TCP struct {
-	BaseLayer
-	SrcPort, DstPort                           TCPPort
-	Seq                                        uint32
-	Ack                                        uint32
-	DataOffset                                 uint8
-	FIN, SYN, RST, PSH, ACK, URG, ECE, CWR, NS bool
-	Window                                     uint16
-	Checksum                                   uint16
-	Urgent                                     uint16
-
-	Options []TCPOption
-	Padding []byte
-	// contains filtered or unexported fields
+//Проверка правил HTTP
+func checkHTTP(httpLayer gopacket.Layer) bool {
+	return false
 }
-*/
+
 //Проверка парвил TCP
 func checkTCP(tcpLayer gopacket.Layer) bool {
 	tcp, ok := tcpLayer.(*layers.TCP)
