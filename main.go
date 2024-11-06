@@ -46,17 +46,129 @@ func initRules() {
 			"DstIp": "2a03:d000:42a0:bf0c:516b:b87e:577f:5f36",
 		},
 	}
-	rules = append(rules, firstRuleIPv4, firstRuleIPv6)
+
+	firstRuleTCP := Rule{
+		Layer: "TCP",
+		Definition: map[string]interface{}{
+			"SrcPort": "*",
+			"DstPort": "*",
+		},
+	}
+	rules = append(rules, firstRuleIPv4, firstRuleIPv6, firstRuleTCP)
 }
 
 
+/*
+type TCP struct {
+	BaseLayer
+	SrcPort, DstPort                           TCPPort
+	Seq                                        uint32
+	Ack                                        uint32
+	DataOffset                                 uint8
+	FIN, SYN, RST, PSH, ACK, URG, ECE, CWR, NS bool
+	Window                                     uint16
+	Checksum                                   uint16
+	Urgent                                     uint16
 
+	Options []TCPOption
+	Padding []byte
+	// contains filtered or unexported fields
+}
+*/
 //Проверка парвил TCP
 func checkTCP(tcpLayer gopacket.Layer) bool {
 	tcp, ok := tcpLayer.(*layers.TCP)
 	if !ok {
 		log.Println("ERROR: Ошибка преобразования к типу TCP")
 		return false
+	}
+
+	for _, rule := range rules {
+		if rule.Layer != "TCP" {
+			continue
+		}
+		thisRule := true
+		for key, value := range rule.Definition {
+			switch key {
+				case "SrcPort":
+					if tcp.SrcPort.String() != value && value != "*" {
+						thisRule = false
+						break
+					}
+				case "DstPort":
+					if tcp.DstPort.String() != value && value != "*" {
+						thisRule = false
+						break
+					}
+				case "Seq":
+					if value != -1 && uint32(value.(int)) != tcp.Seq {
+						thisRule = false
+						break
+					}
+				case "Ack":
+					if value != -1 && uint32(value.(int)) != tcp.Ack {
+						thisRule = false
+						break
+					}
+				case "DataOffset":
+					if value != -1 && uint8(value.(int)) != tcp.DataOffset {
+						thisRule = false
+						break
+					}
+				case "FIN":
+					if value != -1 && tcp.FIN != value.(bool) {
+						thisRule = false
+						break
+					}
+				case "SYN":
+					if value != -1 && tcp.SYN != value.(bool) {
+						thisRule = false
+						break
+					}
+				case "RST":
+					if value != -1 && tcp.RST != value.(bool) {
+						thisRule = false
+						break
+					}
+				case "PSH":
+					if value != -1 && tcp.PSH != value.(bool) {
+						thisRule = false
+						break
+					}
+				case "ACK":
+					if value != -1 && tcp.ACK != value.(bool) {
+						thisRule = false
+						break
+					}
+				case "URG":
+					if value != -1 && tcp.URG != value.(bool) {
+						thisRule = false
+						break
+					}
+				case "ECE":
+					if value != -1 && tcp.ECE != value.(bool) {
+						thisRule = false
+						break
+					}
+				case "CWR":
+					if value != -1 && tcp.CWR != value.(bool) {
+						thisRule = false
+						break
+					}
+				case "NS":
+					if value != -1 && tcp.NS != value.(bool) {
+						thisRule = false
+						break
+					}
+				default:
+					thisRule = false
+					log.Println("ERROR: Неизвестный ключ в правиле TCP:", key)
+			}
+		}
+		if thisRule {
+			fmt.Println("INFO: Правило TCP прошло проверку")
+			return true
+		}
 	}
 	return false
 }
