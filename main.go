@@ -4,8 +4,10 @@ import (
 	"os"
 	"fmt"
 	"log"
-	"github.com/google/gopacket/pcap"
 	"sync"
+	"github.com/google/gopacket/pcap"
+	"github.com/google/gopacket"
+	"github.com/gookit/config"
 )
 
 func sniffer(iface Interface, wg *sync.WaitGroup) {
