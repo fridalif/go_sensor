@@ -6,6 +6,7 @@ import (
 	"log"
 	"sync"
 	"time"
+	"strings"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
 	"github.com/gookit/config/v2"
@@ -52,24 +53,22 @@ func initRules() {
 		Definition: map[string]interface{}{
 			"SrcPort": "*",
 			"DstPort": "*",
+			"PayloadContains":"http",
 		},
 	}
 	rules = append(rules, firstRuleIPv4, firstRuleIPv6, firstRuleTCP)
 }
 
-//Проверка правил HTTP
-func checkHTTP(httpLayer gopacket.Layer) bool {
-	return false
-}
 
 //Проверка парвил TCP
 func checkTCP(tcpLayer gopacket.Layer) bool {
 	tcp, ok := tcpLayer.(*layers.TCP)
+	
 	if !ok {
 		log.Println("ERROR: Ошибка преобразования к типу TCP")
 		return false
 	}
-
+	payload := string(tcp.Payload)
 	for _, rule := range rules {
 		if rule.Layer != "TCP" {
 			continue
@@ -146,6 +145,11 @@ func checkTCP(tcpLayer gopacket.Layer) bool {
 					if value != -1 && tcp.NS != value.(bool) {
 						thisRule = false
 						break
+					}
+				case "PayloadContains":
+					if value.(string) != "*" && !strings.Contains(strings.ToLower(payload), strings.ToLower(value.(string))) {
+						thisRule = false
+						break	
 					}
 				default:
 					thisRule = false
