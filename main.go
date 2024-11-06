@@ -9,6 +9,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
 	"github.com/gookit/config/v2"
+	"github.com/google/gopacket/layers"
 )
 
 //Конфиг
@@ -27,6 +28,23 @@ type Rule struct {
 
 
 var ( rules []Rule )
+
+func checkIPv4(ipLayer gopacket.Layer) bool {
+	ipv4, ok := ipLayer.(*layers.IPv4)
+	if !ok {
+		log.Println("ERROR: Ошибка преобразования к типу IPv4")
+		return false
+	}
+	
+	for _, rule := range rules {
+		if rule.Layer != "IPv4" {
+			continue
+		}
+		
+	}
+
+	return false
+}
 func sniffer(iface string, wg *sync.WaitGroup, cfg *Config) {
 	defer wg.Done()
 	if iface == "dbus-system" || iface == "dbus-session" {
@@ -48,9 +66,10 @@ func sniffer(iface string, wg *sync.WaitGroup, cfg *Config) {
 	for packet := range source.Packets() {
 		fmt.Println(iface)
 		fmt.Println(cfg.ComputerName)
-		for _, layer := range packet.Layers() {
-			fmt.Println(layer.LayerType())
-		}
+		ipLayer := packet.Layer(layers.LayerTypeIPv4)
+        if ipLayer != nil {
+			checkIPv4(ipLayer)
+        }
 	}
 }
 
