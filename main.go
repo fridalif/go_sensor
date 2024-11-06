@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
+	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
 	"github.com/gookit/config/v2"
 )
@@ -13,11 +15,27 @@ type Config struct {
 	ComputerName string `json:"computerName"`
 	Snaplen int  `json:"snaplen"`
 	Promisc bool `json:"promisc"`
-	Timeout int `json:"timeout"`
+	Timeout time.Duration `json:"timeout"`
 }
 
-func sniffer(iface pcap.Interface, wg *sync.WaitGroup, cfg *Config) {
+func sniffer(iface string, wg *sync.WaitGroup, cfg *Config) {
 	defer wg.Done()
+	handle, err := pcap.OpenLive(iface, int32(cfg.Snaplen), cfg.Promisc, cfg.Timeout)
+    if err != nil {
+        log.Println("ERROR: Ошибка открытия интерфейса:", err)
+		return
+    }
+    defer handle.Close()
+	//Если нужны фильтры
+	//if err := handle.SetBPFFilter(filter); err != nil {
+	//	log.Println("ERROR: Ошибка установки фильтра:",err)
+	//	return
+	//}
+
+	source := gopacket.NewPacketSource(handle, handle.LinkType())
+	for packet := range source.Packets() {
+		fmt.Println(cfg.ComputerName,packet)
+	}
 }
 
 func main() {
@@ -45,18 +63,14 @@ func main() {
 	snaplen := config.Int("snaplen")
     promisc := config.Bool("promisc")
 	computerName := config.String("computerName")
-	timeout := config.Int("timeout")
 
 	cfg := &Config{
 		ComputerName: computerName,
 		Snaplen: snaplen,
 		Promisc: promisc,
-		Timeout: timeout,
+		Timeout: pcap.BlockForever,
 	}
-	
-	if timeout == 0 {
-		cfg.Timeout = 1000
-	}
+
 
 	if snaplen == 0 {
 		cfg.Snaplen = 1600
@@ -71,7 +85,7 @@ func main() {
 
 	for _, device := range devices {
 		wg.Add(1)
-		go sniffer(device, wg, cfg)
+		go sniffer(device.Name, wg, cfg)
 	}
 	wg.Wait()
 
