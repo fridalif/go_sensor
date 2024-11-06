@@ -51,42 +51,12 @@ func initRules() {
 
 
 
-
-//Проверка парвил IPv6
-func checkIPv6(ipv6Layer gopacket.Layer) bool {
-	ipv6, ok := ipv6Layer.(*layers.IPv6)
+//Проверка парвил TCP
+func checkTCP(tcpLayer gopacket.Layer) bool {
+	tcp, ok := tcpLayer.(*layers.TCP)
 	if !ok {
-		log.Println("ERROR: Ошибка преобразования к типу IPv6")
+		log.Println("ERROR: Ошибка преобразования к типу TCP")
 		return false
-	}
-	for _, rule := range rules {
-		if rule.Layer != "IPv6" {
-			continue
-		}
-		thisRule := true
-		for key, value := range rule.Definition {
-			switch key {
-				case "SrcIp":
-					if ipv6.SrcIP.String() != value && value != "*" {
-						thisRule = false
-						break
-					}
-					continue
-				case "DstIp":
-					if ipv6.DstIP.String() != value && value != "*" {
-						thisRule = false
-						break
-					}
-					continue
-				default:
-					thisRule = false
-					log.Println("ERROR: Неизвестный ключ в правиле IPv6:", key)
-			}
-		}
-		if thisRule {
-			fmt.Println("Правило прошло проверку")
-			return true
-		}
 	}
 	return false
 }
@@ -178,9 +148,13 @@ func sniffer(iface string, wg *sync.WaitGroup, cfg *Config) {
         if ipLayer != nil {
 			checkIPv4(ipLayer)
         }*/
-		ipv6Layer := packet.Layer(layers.LayerTypeIPv6)
+		/*ipv6Layer := packet.Layer(layers.LayerTypeIPv6)
 		if ipv6Layer != nil {
 			checkIPv6(ipv6Layer)
+		}*/
+		tcpLayer := packet.Layer(layers.LayerTypeTCP)
+		if tcpLayer != nil {
+			checkTCP(tcpLayer)
 		}
 	}
 }
