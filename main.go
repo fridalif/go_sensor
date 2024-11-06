@@ -11,6 +11,7 @@ import (
 	"github.com/gookit/config/v2"
 )
 
+//Конфиг
 type Config struct {
 	ComputerName string `json:"computerName"`
 	Snaplen int  `json:"snaplen"`
@@ -18,11 +19,14 @@ type Config struct {
 	Timeout time.Duration `json:"timeout"`
 }
 
+//Правило
 type Rule struct {
 	Layer string `json:"layer"`
 	Definition map[string]string `json:"definition"`
 }
 
+
+var ( rules []Rule )
 func sniffer(iface string, wg *sync.WaitGroup, cfg *Config) {
 	defer wg.Done()
 	if iface == "dbus-system" || iface == "dbus-session" {
