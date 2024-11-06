@@ -23,28 +23,111 @@ type Config struct {
 //Правило
 type Rule struct {
 	Layer string `json:"layer"`
-	Definition map[string]string `json:"definition"`
+	Definition map[string]interface{} `json:"definition"`
 }
 
 
 var ( rules []Rule )
 
+func initRules() {
+	firstRule := Rule{
+		Layer: "IPv4",
+		Definition: map[string]interface{}{
+			"SrcIp": "127.0.0.1",
+			"DstIp": "127.0.0.1",
+			"TTL": 64,
+		},
+	}
+
+	rules = append(rules, firstRule)
+}
 func checkIPv4(ipLayer gopacket.Layer) bool {
 	ipv4, ok := ipLayer.(*layers.IPv4)
 	if !ok {
 		log.Println("ERROR: Ошибка преобразования к типу IPv4")
 		return false
 	}
-	
+	/*
+	Version    uint8
+	IHL        uint8
+	TOS        uint8
+	Length     uint16
+	TTL        uint8
+	Protocol   IPProtocol
+	Checksum   uint16
+	SrcIP      net.IP
+	DstIP      net.IP
+	*/
 	for _, rule := range rules {
 		if rule.Layer != "IPv4" {
 			continue
 		}
-		
+		thisRule := true
+		for key, value := range rule.Definition {
+			switch key {
+				case "SrcIp":
+					if ipv4.SrcIP.String() != value && value != "*" {
+						thisRule = false
+						break
+					}
+					continue
+				case "DstIp":
+					if ipv4.DstIP.String() != value && value != "*" {
+						thisRule = false
+						break
+					}
+					continue
+				case "Protocol":
+					if ipv4.Protocol.String() != value && value != "*" {
+						thisRule = false
+						break
+					}
+					continue
+				case "IHL": 
+					if value != -1 && uint8(value.(int)) != ipv4.IHL {
+						thisRule = false
+						break
+					}
+					continue
+				case "TOS": 
+					if value != -1 && uint8(value.(int)) != ipv4.TOS {
+						thisRule = false
+						break
+					}
+					continue
+				case "Length": 
+					if value != -1 && uint16(value.(int)) != ipv4.Length {
+						thisRule = false
+						break
+					}
+					continue
+				case "TTL": 
+					if value != -1 && ipv4.TTL != uint8(value.(int)) {
+						fmt.Println(ipv4.TTL, value)
+						thisRule = false
+						break
+					}
+					continue
+				case "Checksum": 
+					if value != -1 && uint16(value.(int)) != ipv4.Checksum {
+						thisRule = false
+						break
+					}
+					continue
+				default:
+					thisRule = false
+					log.Println("ERROR: Неизвестный ключ в правиле:", key)
+			}
+		}
+		if thisRule {
+			fmt.Println("Правило прошло проверку")
+			return true
+		}
 	}
-
 	return false
 }
+
+
 func sniffer(iface string, wg *sync.WaitGroup, cfg *Config) {
 	defer wg.Done()
 	if iface == "dbus-system" || iface == "dbus-session" {
@@ -116,6 +199,7 @@ func main() {
 	}
 	
 	//Запуск прослушивания интерфейсов
+	initRules()
 	wg := new(sync.WaitGroup)
 
 	for _, device := range devices {
