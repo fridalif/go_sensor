@@ -4,6 +4,7 @@ import (
 	"gorm.io/driver/postgres"
 	"errors"
 	"gorm.io/gorm"
+	"time"
 )
 
 
@@ -44,7 +45,15 @@ type Rule struct {
 	CWR        bool "CWR"
 
 	PayloadContains string "PayloadContains"
+}
 
+type Alert struct {
+	gorm.Model
+	ComputerID uint
+	Computer   IncludedComputer `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	RuleID uint
+	Rule    Rule `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	timestamp time.Time
 }
 
 
@@ -56,7 +65,7 @@ func InitDB() (*gorm.DB, error) {
 	if err != nil {
 		return nil, errors.New("Не удалось подключиться к базе данных")
 	}
-	err = db.AutoMigrate(&IncludedComputer{}, &Layer{}, &Rule{})
+	err = db.AutoMigrate(&IncludedComputer{}, &Layer{}, &Rule{}, &Alert{})
 	if err != nil {
 		return nil, errors.New("Не удалось создать таблицы в базе данных")
 	}
