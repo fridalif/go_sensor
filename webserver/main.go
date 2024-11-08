@@ -21,7 +21,7 @@ func main() {
 	log.SetOutput(file)
 
 	//Инициализация базы данных
-	_, err = models.InitDB()
+	db, err := models.InitDB()
 	if err != nil {
 		log.Fatalln("ERROR: Ошибка подключения к базе данных:", err)
 	}
@@ -29,8 +29,7 @@ func main() {
 	//Инициализация роутера
 	router = gin.Default()
 	router.LoadHTMLGlob("templates/*")
-  
-	router.GET("/", views.Index,)
+	router.GET("/", func (c *gin.Context) {views.Index(c, db)},)
   
 	err = router.Run(":9000")
 	if err != nil {
