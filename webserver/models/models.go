@@ -4,17 +4,26 @@ import (
 	"gorm.io/driver/postgres"
 	"errors"
 	"gorm.io/gorm"
-	"log"
 )
 
-//Инициализация логирования
-file, err := os.OpenFile("../database.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-defer file.Close()
-
-if err != nil {
-	log.Fatalln("ERROR:Ошибка при открытии файла:", err)
+type IncludedComputer struct {
+	gorm.Model
+	Name string
+	Address string
 }
-log.SetOutput(file)
+
+type Layer struct {
+	gorm.Model
+	Name string `gorm:"unique;not null"`
+}
+
+type Rule struct {
+	gorm.Model
+	NetLayer Layer `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Definition map[string]interface{}
+}
+
+
 
 func initDB() (*gorm.DB, error) {
 	dsn := "host=localhost user=postgres password=postgres dbname=webinterface port=5432 sslmode=disable TimeZone=Asia/Shanghai"
