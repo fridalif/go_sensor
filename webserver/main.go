@@ -1,28 +1,32 @@
 package main
 
 import (
-	"net/http"
 	"log"
 	"github.com/gin-gonic/gin"
+	"webinterface/views"
+	"os"
 )
   
 var router *gin.Engine
 
 func main() {
+	//Инициализация логирования
+	file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	defer file.Close()
+	
+	if err != nil {
+    	log.Fatalln("ERROR:Ошибка при открытии файла:", err)
+	}
+	log.SetOutput(file)
 
+	//Инициализация роутера
 	router = gin.Default()
 	router.LoadHTMLGlob("templates/*")
   
-	router.GET("/", func(c *gin.Context) {
-	  c.HTML(
-		http.StatusOK,
-		"index.html",
-		gin.H{
-		  "title": "Home Page",
-		},
-	  )
-	})
+	router.GET("/", views.Index,)
   
-	router.Run(":9000")
-  
+	err = router.Run(":9000")
+	if err != nil {
+    	log.Fatalln("ERROR: Ошибка запуска сервера:", err)
+	}
   }
