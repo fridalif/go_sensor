@@ -29,4 +29,4 @@ func main() {
 	if err != nil {
     	log.Fatalln("ERROR: Ошибка запуска сервера:", err)
 	}
-  }
+}
