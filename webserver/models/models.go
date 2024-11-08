@@ -6,26 +6,50 @@ import (
 	"gorm.io/gorm"
 )
 
+
 type IncludedComputer struct {
-	gorm.Model
-	Name string
-	Address string
+    gorm.Model
+    Name    string
+    Address string
 }
 
 type Layer struct {
-	gorm.Model
-	Name string `gorm:"unique;not null"`
+    gorm.Model
+    Name string `gorm:"unique;not null"`
 }
 
 type Rule struct {
-	gorm.Model
-	NetLayer Layer `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	Definition map[string]interface{}
+    gorm.Model
+	NetlayerID uint
+    Netlayer   Layer `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	SrcIp      string
+	DstIp      string
+	IHL        int64 "IHL"
+	Protocol   string
+	TTL        int64
+	TOS        int64
+	Checksum   int64
+	SrcPort    string "SrcPort"
+	DstPort    string "DstPort"
+	Seq        int64 "Seq"
+	Ack        int64 "Ack"
+	DataOffset int64 "DataOffset"
+	FIN        bool "FIN"
+	SYN        bool "SYN"
+	RST        bool "RST"
+	PSH        bool "PSH"
+	ACK        bool "ACK"
+	URG        bool "URG"
+	ECE        bool "ECE"
+	CWR        bool "CWR"
+
+	PayloadContains string "PayloadContains"
+
 }
 
 
 
-func initDB() (*gorm.DB, error) {
+func InitDB() (*gorm.DB, error) {
 	dsn := "host=localhost user=postgres password=postgres dbname=webinterface port=5432 sslmode=disable TimeZone=Asia/Shanghai"
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 

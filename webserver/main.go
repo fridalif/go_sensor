@@ -4,6 +4,7 @@ import (
 	"log"
 	"github.com/gin-gonic/gin"
 	"webinterface/views"
+	"webinterface/models"
 	"os"
 )
   
@@ -18,6 +19,12 @@ func main() {
     	log.Fatalln("ERROR:Ошибка при открытии файла:", err)
 	}
 	log.SetOutput(file)
+
+	//Инициализация базы данных
+	_, err = models.InitDB()
+	if err != nil {
+		log.Fatalln("ERROR: Ошибка подключения к базе данных:", err)
+	}
 
 	//Инициализация роутера
 	router = gin.Default()
