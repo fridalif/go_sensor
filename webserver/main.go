@@ -29,6 +29,7 @@ func main() {
 	//Инициализация роутера
 	router = gin.Default()
 	router.LoadHTMLGlob("templates/*")
+	router.Static("/static", "./static")
 	router.GET("/", func (c *gin.Context) {views.Index(c, db)},)
   
 	err = router.Run(":9000")
