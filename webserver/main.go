@@ -9,5 +9,20 @@ import (
 var router *gin.Engine
 
 func main() {
-	return
-}
+
+	router = gin.Default()
+	router.LoadHTMLGlob("templates/*")
+  
+	router.GET("/", func(c *gin.Context) {
+	  c.HTML(
+		http.StatusOK,
+		"index.html",
+		gin.H{
+		  "title": "Home Page",
+		},
+	  )
+	})
+  
+	router.Run(":9000")
+  
+  }
