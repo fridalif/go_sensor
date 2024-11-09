@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"gorm.io/gorm"
     "log"
-    "fmt"
-    "time"
+ //   "fmt"
+  //  "time"
 	"github.com/gorilla/websocket"
     "webinterface/models"
 )
@@ -26,20 +26,19 @@ func WSHandler(c *gin.Context, db *gorm.DB) {
     }
     defer conn.Close()
 
-    for {
-        
-        /*messageType, message, err := conn.ReadMessage()
-        if err != nil {
-            log.Println("Ошибка при чтении сообщения:", err)
-            break
-        }
-        fmt.Printf("Получено сообщение: %s\n", message)*/
+    var alerts []models.Alert
+    if err := db.Preload("Computer").Preload("Rule").Preload("Rule.Netlayer").Order("timestamp desc").Find(&alerts).Error; err != nil {
+        log.Println("Ошибка при получении записей:", err)
+        return
+    }
 
-        if err := conn.WriteMessage(messageType, message); err != nil {
+    for _, alert := range alerts {
+        if err := conn.WriteJSON(alert); err != nil {
             log.Println("Ошибка при отправке сообщения:", err)
-            break
+            return
         }
     }
+
 }
 
 

@@ -95,7 +95,7 @@
             <div class="alertsHeader">
                 Сработки
             </div>
-            <div class="alertsTable">
+            <div class="alertsTable" id="alertsTable">
                 <div class="rulesBlockContentRow">
                     <div class="rulesCell">
                         Компьютер
@@ -131,5 +131,18 @@
             </div>
         </div>
     </div>
+    <script>
+        const ws = new WebSocket("ws://localhost:9000/ws");
+        ws.onopen = function() {
+            console.log("Подключено к WebSocket");
+        };
+        ws.onmessage = onMessage;
+        ws.onclose = function() {
+            console.log("WebSocket закрыт");
+        };
+        ws.onerror = function(error) {
+            console.error("Ошибка WebSocket:", error);
+        };
+    </script>
 </body>
 </html>
