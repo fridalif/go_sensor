@@ -4,6 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"gorm.io/gorm"
+    "log"
+    "fmt"
 	"github.com/gorilla/websocket"
 )
 
@@ -14,7 +16,7 @@ var upgrader = websocket.Upgrader{
     },
 }
 
-func WSHandler(с *gin.Context) {
+func WSHandler(c *gin.Context, db *gorm.DB) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
         log.Println("Ошибка при установлении WebSocket-соединения:", err)
