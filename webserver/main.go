@@ -10,6 +10,7 @@ import (
   
 var router *gin.Engine
 
+
 func main() {
 	//Инициализация логирования
 	file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
