@@ -247,18 +247,22 @@ func sniffer(iface string, wg *sync.WaitGroup, cfg *Config) {
 	//Запуск прослушивания
 	source := gopacket.NewPacketSource(handle, handle.LinkType())
 	for packet := range source.Packets() {
-		/*ipLayer := packet.Layer(layers.LayerTypeIPv4)
-        if ipLayer != nil {
-			checkIPv4(ipLayer)
-        }*/
-		/*ipv6Layer := packet.Layer(layers.LayerTypeIPv6)
-		if ipv6Layer != nil {
-			checkIPv6(ipv6Layer)
-		}*/
-		tcpLayer := packet.Layer(layers.LayerTypeTCP)
-		if tcpLayer != nil {
-			checkTCP(tcpLayer)
-		}
+		wg.Add(1)
+		go func(packet gopacket.Packet) {
+			defer wg.Done()
+			/*ipLayer := packet.Layer(layers.LayerTypeIPv4)
+        	if ipLayer != nil {
+				checkIPv4(ipLayer)
+        	}*/
+			/*ipv6Layer := packet.Layer(layers.LayerTypeIPv6)
+			if ipv6Layer != nil {
+				checkIPv6(ipv6Layer)
+			}*/
+			tcpLayer := packet.Layer(layers.LayerTypeTCP)
+			if tcpLayer != nil {
+				checkTCP(tcpLayer)
+			}
+		}(packet)
 	}
 }
 
