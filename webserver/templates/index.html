@@ -1,14 +1,46 @@
 <html>
 <head>
     <title>Web Server</title>
+    <link rel="stylesheet" href="static/css/styles.css">
 </head>
 <body>
-
-<script type="text/javascript" src="static/js/script.js"></script>
-    <h1>Web Server</h1>
-    <script>alerting()</script>
-    <p>Hello {{.title}}</p>
-    <p>This is a web server.</p>
-    
+    <script type="text/javascript" src="static/js/script.js"></script>
+    <div class="header">
+        Simple SIEM
+    </div>
+    <div class="content">
+        <div class="contentRow">
+            <div class="computersBlock">
+                <div class="computersBlockHeader">
+                    Подключённые компьютеры
+                </div>
+                <div class="computersBlockContent">
+                    <div class="computersBlockContentRow">
+                        <div>
+                            Компьютер
+                        </div>
+                        <div>
+                            Адрес
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="rulesBlock">
+                <div class="rulesBlockHeader">
+                    Правила
+                </div>
+                <div class="rulesBlockContent">
+                    <div class="rulesBlockContentRow">
+                        <div>
+                            Компьютер
+                        </div>
+                        <div>
+                            Адрес
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
