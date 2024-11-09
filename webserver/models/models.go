@@ -25,25 +25,10 @@ type Rule struct {
     Netlayer   Layer `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	SrcIp      string
 	DstIp      string
-	IHL        int64 "IHL"
-	Protocol   string
 	TTL        int64
-	TOS        int64
 	Checksum   int64
 	SrcPort    string "SrcPort"
 	DstPort    string "DstPort"
-	Seq        int64 "Seq"
-	Ack        int64 "Ack"
-	DataOffset int64 "DataOffset"
-	FIN        bool "FIN"
-	SYN        bool "SYN"
-	RST        bool "RST"
-	PSH        bool "PSH"
-	ACK        bool "ACK"
-	URG        bool "URG"
-	ECE        bool "ECE"
-	CWR        bool "CWR"
-
 	PayloadContains string "PayloadContains"
 }
 
