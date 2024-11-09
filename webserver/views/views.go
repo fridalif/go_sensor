@@ -6,7 +6,9 @@ import (
 	"gorm.io/gorm"
     "log"
     "fmt"
+    "time"
 	"github.com/gorilla/websocket"
+    "webinterface/models"
 )
 
 
@@ -25,12 +27,13 @@ func WSHandler(c *gin.Context, db *gorm.DB) {
     defer conn.Close()
 
     for {
-        messageType, message, err := conn.ReadMessage()
+        
+        /*messageType, message, err := conn.ReadMessage()
         if err != nil {
             log.Println("Ошибка при чтении сообщения:", err)
             break
         }
-        fmt.Printf("Получено сообщение: %s\n", message)
+        fmt.Printf("Получено сообщение: %s\n", message)*/
 
         if err := conn.WriteMessage(messageType, message); err != nil {
             log.Println("Ошибка при отправке сообщения:", err)
@@ -41,6 +44,47 @@ func WSHandler(c *gin.Context, db *gorm.DB) {
 
 
 func Index(c *gin.Context, db *gorm.DB) {
+    
+    /* testovie dannie
+    netLayer := models.Layer{Name:"IPv4",}
+    result := db.Create(&netLayer)
+    if result.Error != nil {
+        fmt.Println(result.Error)
+    }
+    rule := models.Rule{
+        NetlayerID: netLayer.ID,
+        Netlayer:   netLayer,
+        SrcIp:      "244.178.44.111",
+        DstIp:      "244.178.44.111",
+        TTL:        64,
+        Checksum:   0,
+        SrcPort:    "*",
+        DstPort:    "*",
+        PayloadContains: "Hello, World!",
+    }
+    result = db.Create(&rule)
+    if result.Error != nil {
+        fmt.Println(result.Error)
+    }
+    includedComputer := models.IncludedComputer{
+        Name:    "Computer1",
+        Address: "244.178.44.111",
+    }
+    result = db.Create(&includedComputer)
+    if result.Error != nil {
+        fmt.Println(result.Error)
+    }
+    alert := models.Alert{
+        ComputerID: includedComputer.ID,
+        Computer:   includedComputer,
+        RuleID:     rule.ID,
+        Rule:       rule,
+        Timestamp:  time.Now(),
+    }
+    result = db.Create(&alert)
+    if result.Error != nil {
+        fmt.Println(result.Error)
+    }*/
 	c.HTML(
 	  http.StatusOK,
 	  "index.html",

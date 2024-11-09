@@ -38,7 +38,7 @@ type Alert struct {
 	Computer   IncludedComputer `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	RuleID uint
 	Rule    Rule `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	timestamp time.Time
+	Timestamp time.Time
 }
 
 
