@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"gorm.io/gorm"
     "log"
- //   "fmt"
-  //  "time"
 	"github.com/gorilla/websocket"
     "webinterface/models"
 )
@@ -33,9 +31,12 @@ type RuleMessage struct {
     Data      models.Rule  `json:"data"`
 }
 
+//каналы для синхронизации
 var alertsChanel = make(chan models.Alert)
 var compChanel = make(chan models.IncludedComputer)
 var rulesChanel = make(chan modles.Rule)
+var deleteRules = make(chan int)
+
 
 var clients = make([]*websocket.Conn, 0)
 func closeConn(conn *websocket.Conn) {
@@ -149,7 +150,19 @@ func WSHandler(c *gin.Context, db *gorm.DB) {
                     return
                 }
             }
+        case deletedID := <-deleteRules:
+            message := {
+                TableName:"delete_rule",
+                Id: deletedID,
+            }
+            for _, compConnection := range clients {
+                if err := compConenction.WriteJSON(message); err != nil {
+                    log.Println("Ошибка при отправке сообщения:", err)
+                    return
+                }
+            }
         }
+        
     }
     
 }
