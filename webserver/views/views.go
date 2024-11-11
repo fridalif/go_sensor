@@ -33,7 +33,9 @@ type RuleMessage struct {
     Data      models.Rule  `json:"data"`
 }
 
-//var alertsChanel = make(chan models.Alert)
+var alertsChanel = make(chan models.Alert)
+var compChanel = make(chan models.IncludedComputer)
+var rulesChanel = make(chan modles.Rule)
 
 var clients = make([]*websocket.Conn, 0)
 func closeConn(conn *websocket.Conn) {
@@ -45,21 +47,25 @@ func closeConn(conn *websocket.Conn) {
         }
     }
 }
+
+// handler обработки websocket
 func WSHandler(c *gin.Context, db *gorm.DB) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
         log.Println("Ошибка при установлении WebSocket-соединения:", err)
         return
     }
+
     clients = append(clients, conn)
 
     defer closeConn(conn)
+    
     var computers []models.IncludedComputer
     if err := db.Find(&computers).Error; err != nil {
         log.Println("Ошибка при получении записей:", err)
         return
     }
-
+    //Инициализация компютеров
     for _, computer := range computers {
         message := ComputerMessage{
             TableName: "computers",
@@ -76,7 +82,7 @@ func WSHandler(c *gin.Context, db *gorm.DB) {
         log.Println("Ошибка при получении записей:", err)
         return
     }
-
+    //Инициализация правил
     for _, rule := range rules {
         message := RuleMessage{
             TableName: "rules",
@@ -95,7 +101,7 @@ func WSHandler(c *gin.Context, db *gorm.DB) {
         log.Println("Ошибка при получении записей:", err)
         return
     }
-
+    //Инициализация алертов
     for _, alert := range alerts {
         message := AlertMessage{
             TableName: "alerts",
@@ -106,7 +112,46 @@ func WSHandler(c *gin.Context, db *gorm.DB) {
             return
         }
     }
-
+    
+    //Ожидание подключения новых компьютеров или сработок
+    for {
+        select {
+        case alert := <-alertsChanel:
+            message := AlertMessage{
+                TableName: "new_alerts",
+                Data:      alert,
+            }
+            for _, compConnection := range clients {
+                if err := compConenction.WriteJSON(message); err != nil {
+                    log.Println("Ошибка при отправке сообщения:", err)
+                    return
+                }
+            }
+        case computer := <-compChanel:
+            message := ComputerMessage{
+                TableName: "new_computers",
+                Data:      computer,
+            }
+            for _, compConnection := range clients {
+                if err := compConenction.WriteJSON(message); err != nil {
+                    log.Println("Ошибка при отправке сообщения:", err)
+                    return
+                }
+            }
+        case rule := <-rulesChanel:
+            message := RuleMessage{
+                TableName:"new_rule",
+                Data: rule,
+            }
+            for _, compConnection := range clients {
+                if err := compConenction.WriteJSON(message); err != nil {
+                    log.Println("Ошибка при отправке сообщения:", err)
+                    return
+                }
+            }
+        }
+    }
+    
 }
 
 
