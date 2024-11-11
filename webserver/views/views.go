@@ -162,7 +162,6 @@ func WSHandler(c *gin.Context, db *gorm.DB) {
                 }
             }
         }
-        
     }
     
 }
