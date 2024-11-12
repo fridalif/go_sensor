@@ -17,6 +17,7 @@ var upgrader = websocket.Upgrader{
     },
 }
 
+
 type AlertMessage struct {
     TableName string `json:"table_name"`
     Data      models.Alert  `json:"data"`       
@@ -284,6 +285,82 @@ func GetRules(c *gin.Context, db *gorm.DB) {
         }
         alertChanel <- newAlertModel
     }
+}
+
+func AddRule(c *gin.Context, db *gorm.DB) {
+    if c.Request.Method != "POST" {
+        c.AbortWithStatus(http.StatusMethodNotAllowed)
+        return
+    }
+    var ruleInterface map[string]interface{}
+    if err := c.BindJSON(&ruleInterface); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+    }
+    var rule models.Rule
+    var netlayer models.Layer
+    if err := db.Where("name = ?", ruleInterface["netlayer"].(string)).First(&netlayer).Error; err != nil {
+        response := gin.H{
+            "status":  "error",
+            "message": "Сетевой уровень не найден",
+            "data":    nil,
+        }
+        c.JSON(http.StatusBadRequest, response)
+        return
+    }
+    rule.Netlayer = netlayer
+    rule.NetlayerID = netlayer.ID
+    if srcIp, exists := ruleInterface["src_ip"].(string); exists{
+        rule.SrcIP = srcIp
+    }
+    else{
+        rule.SrcIP = "*"
+    }
+    if dstIp, exists := ruleInterface["dst_ip"].(string); exists{
+        rule.DstIP = dstIp
+    }
+    else{
+        rule.DstIP = "*"
+    }
+    if TTL, exists := ruleInterface["TTL"].(int64); exists{
+        rule.TTL = TTL
+    }
+    else{
+        rule.TTL = -1
+    }
+    if checksum, exists := ruleInterface["checksum"].(int64);exists{
+        rule.Checksum = checksum
+    }
+    else{
+        rule.Checksum = -1
+    }
+    if srcPort, exists := ruleInterface["src_port"].(string);exists{
+        rule.SrcPort = srcPort
+    }
+    else{
+        rule.SrcPort = "*"
+    }
+    if dstPort, exists := ruleInterface["dst_port"].(string); exists{
+        rule.DstPort = dstPort
+    }
+    else{
+        rule.DstPort = "*"
+    }
+    if payloadContains, exists := ruleInterface["payload_contains"]; exists{
+        rule.PayloadContains = payloadContains
+    }
+    else{
+        rule.PayloadContains = "*"
+    }
+    if err := db.Create(&rule).Error; err != nil {
+        log.Println("ERROR: ошибка добавления в базу данных", err)
+        c.AbortWithStatus(http.StatusInternalServerError)
+        return
+    }
+    response := gin.H{
+        "status":  "success",
+        "message": "Правило успешно добавлено",
+    }
+    c.JSON(http.StatusOK, response)
 }
 func Index(c *gin.Context, db *gorm.DB) {
  	c.HTML(
