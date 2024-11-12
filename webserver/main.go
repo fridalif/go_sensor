@@ -6,6 +6,8 @@ import (
 	"webinterface/views"
 	"webinterface/models"
 	"os"
+	"strconv"
+	"github.com/gookit/config/v2"
 )
   
 var router *gin.Engine
@@ -36,8 +38,21 @@ func main() {
 	router.GET("/sensorconn", func (c *gin.Context) {views.GetRules(c, db)},)
 	router.POST("/api/add_rule", func(c *gin.Context){views.AddRule(c,db)},)
 	router.DELETE("/api/delete_rule", func(c *gin.Context){views.DeleteRule(c,db)},)
-  
-	err = router.Run(":9000")
+	
+
+	err = config.LoadFiles("config.json")
+	if err != nil {
+		log.Fatalln("ERROR: Ошибка загрузки конфига:", err)
+	}
+	port := config.Int("port")
+	address := config.String("address")
+	if address == "" {
+		address = "127.0.0.1"
+	}
+	if port == 0 {
+		port = 9000
+	}
+	err = router.Run(address + ":" + strconv.Itoa(port))
 	if err != nil {
     	log.Fatalln("ERROR: Ошибка запуска сервера:", err)
 	}
