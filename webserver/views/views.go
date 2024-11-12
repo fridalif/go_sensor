@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"gorm.io/gorm"
     "log"
-    "fmt"
     "time"
+    "fmt"
 	"github.com/gorilla/websocket"
     "webinterface/models"
 )
@@ -240,7 +240,6 @@ func GetRules(c *gin.Context, db *gorm.DB) {
         if timestamp, exists:= newAlert["timestamp"].(time.Time); exists {
             newAlertModel.Timestamp = timestamp
         }
-        fmt.Println("HERE4")
         if err := db.Create(&newAlertModel).Error; err != nil {
             log.Println("ERROR: Ошибка при создании записи:", err)
             continue
@@ -249,7 +248,6 @@ func GetRules(c *gin.Context, db *gorm.DB) {
             TableName: "new_alerts",
             Data:      newAlertModel,
         }
-        fmt.Println(message)
         for _, compConnection := range clients {
             if err := compConnection.WriteJSON(message); err != nil {
                 log.Println("Ошибка при отправке сообщения:", err)
@@ -347,16 +345,17 @@ func AddRule(c *gin.Context, db *gorm.DB) {
     c.JSON(http.StatusOK, response)
 }
 
-func DeleteRule(c* gin.Context, db *gorm.DB){
+func DeleteRule(c *gin.Context, db *gorm.DB){
     if c.Request.Method != "DELETE" {
         c.AbortWithStatus(http.StatusMethodNotAllowed)
         return
     }
+    fmt.Print("hi")
     var ruleInterface map[string]interface{}
     if err := c.BindJSON(&ruleInterface); err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
     }
-    id, exists := ruleInterface["rule_id"].(uint) 
+    id, exists := ruleInterface["rule_id"].(float64)
     if !exists{
         response := gin.H{
             "status":"error",
@@ -367,7 +366,7 @@ func DeleteRule(c* gin.Context, db *gorm.DB){
         return
     }
     var rule models.Rule
-    result := db.First(&rule, id)
+    result := db.First(&rule, uint(id))
     if result.Error != nil{
         response := gin.H{
             "status":"error",
@@ -378,7 +377,7 @@ func DeleteRule(c* gin.Context, db *gorm.DB){
         return
     }
     db.Delete(&rule)
-    deleteRules <- rule.ID
+    //deleteRules <- rule.ID
     message := map[string]interface{}{
         "TableName":"delete_rule",
         "Id": rule.ID,

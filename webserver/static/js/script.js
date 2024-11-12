@@ -69,8 +69,32 @@ function setRules(rules) {
     let rulesTable = document.getElementById("rulesTable");
     let newElement = document.createElement("div");
     newElement.className = "rulesBlockContentRow";
+    newElement.id = String(rules.ID);
     let deleteBut = document.createElement("div");
     deleteBut.className = "deleteButton";
+    deleteBut.onclick = function() {
+        fetch(`/api/delete_rule`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ "rule_id": rules.ID }) // Include the payload here
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status == "Success"){
+                let element = document.getElementById(String(rules.ID));
+                element.remove();
+                alert("Правило удалено");
+                return
+            }
+            alert(data.message)
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+
+    }
     deleteBut.innerHTML = "-";
     newElement.appendChild(deleteBut);
     let layer = document.createElement("div");
@@ -107,6 +131,7 @@ function newAlert(alerts) {
     let alertsTable = document.getElementById("alertsTable");
     let newElement = document.createElement("div");
     newElement.className = "rulesBlockContentRow";
+    
     let computer = document.createElement("div");
     computer.className = "rulesCell";
     computer.innerHTML = alerts.Computer.Name;
@@ -151,7 +176,6 @@ function newAlert(alerts) {
 }
 function onMessage(event) {
     const response = JSON.parse(event.data);
-    console.log(response)
     if (response.table_name == "alerts") {
         setAlerts(response.data);
     }
@@ -170,5 +194,9 @@ function onMessage(event) {
     if (response.table_name == "new_alerts") {
         newAlert(response.data);
     }
-    console.log(response.data);
+    if (response.table_name == "delete_rule") {
+        id = response.Id
+        let element = document.getElementById(String(id));
+        element.remove();
+    }
 }

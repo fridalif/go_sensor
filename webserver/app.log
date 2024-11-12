@@ -1998,3 +1998,4 @@
 2024/11/12 20:55:26 ERROR: Не удалось получить ID правила
 2024/11/12 20:55:26 Ошибка при чтении сообщения: websocket: close 1006 (abnormal closure): unexpected EOF
 2024/11/12 20:55:26 ERROR: Не удалось получить ID правила
+2024/11/12 21:15:51 ERROR: Ошибка запуска сервера: listen tcp :9000: bind: address already in use

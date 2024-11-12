@@ -110,7 +110,6 @@
         };
         ws.onmessage = function(event) {
             onMessage(event);
-            console.log("mess");
         };
         ws.onclose = function() {
             console.log("WebSocket закрыт");
