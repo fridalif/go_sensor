@@ -33,19 +33,27 @@ var ( rules []Rule )
 
 
 func sendAlert(ruleId int, conn *websocket.Conn) {
-	conn.WriteJSON(map[string]interface{}{
+	err := conn.WriteJSON(map[string]interface{}{
 		"rule_id": ruleId,
 		"computer_id": computerId,
 	})
+	if err!=nil {
+		log.Fatalln("ERROR: Не получилось отпраивть сработку серверу:",err)
+		return
+	}
 }
 
 func initRules(cfg *Config, conn *websocket.Conn) {
 	
     // Устанавливаем соединение с WebSocket-сервером
 
-	conn.WriteJSON(map[string]interface{}{
+	err := conn.WriteJSON(map[string]interface{}{
 		"name": cfg.ComputerName,
 	})
+	if err!=nil {
+		log.Fatalln("ERROR: Не получилось отпраивть идентификационные данные серверу:",err)
+		return
+	}
     for {
         var serverMessage = map[string]interface{}{}
     	if err := conn.ReadJSON(&serverMessage); err != nil {
@@ -225,7 +233,8 @@ func checkTCP(tcpLayer gopacket.Layer, conn *websocket.Conn) bool {
 			}
 		}
 		if thisRule {
-			fmt.Println("INFO: Правило TCP прошло проверку")
+			log.Println("INFO: Правило TCP прошло проверку")
+			sendAlert(rule.ID, conn)
 			return true
 		}
 	}
@@ -297,7 +306,8 @@ func checkIPv4(ipLayer gopacket.Layer, conn *websocket.Conn) bool {
 			}
 		}
 		if thisRule {
-			fmt.Println("Правило прошло проверку")
+			log.Println("INFO:Правило прошло проверку")
+			sendAlert(rule.ID, conn)
 			return true
 		}
 	}
