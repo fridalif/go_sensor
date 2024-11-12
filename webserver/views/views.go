@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"gorm.io/gorm"
     "log"
+    "time"
 	"github.com/gorilla/websocket"
     "webinterface/models"
 )
@@ -266,12 +267,16 @@ func GetRules(c *gin.Context, db *gorm.DB) {
             log.Println("ERROR: Правило не найдено:", err)
             continue
         }
+         
         newAlertModel := models.Alert{
             ComputerID: myComputer.ID,
             Computer:   myComputer,
             RuleID:     rule.ID,
             Rule:       rule,
             Timestamp:  time.Now(),
+        }
+        if timestamp, exists:= newAlert["timestamp"].(time.Time); exists {
+
         }
         if err := db.Create(&newAlertModel).Error; err != nil {
             log.Println("ERROR: Ошибка при создании записи:", err)

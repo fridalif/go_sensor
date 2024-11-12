@@ -35,7 +35,7 @@ var ( rules []Rule )
 func sendAlert(ruleId int, conn *websocket.Conn) {
 	err := conn.WriteJSON(map[string]interface{}{
 		"rule_id": ruleId,
-		"computer_id": computerId,
+		"timestamp":time.Now(),
 	})
 	if err!=nil {
 		log.Fatalln("ERROR: Не получилось отпраивть сработку серверу:",err)
