@@ -1,4 +1,9 @@
 {
     "address":"127.0.0.1",
-    "port":9000
+    "port":9000,
+    "db_address":"127.0.0.1",
+    "db_port":5432,
+    "db_name":"webinterface",
+    "db_user":"postgres",
+    "db_password":"postgres"
 }

@@ -4,6 +4,9 @@ import (
 	"gorm.io/driver/postgres"
 	"errors"
 	"gorm.io/gorm"
+	"github.com/gookit/config/v2"
+	"log"
+	"strconv"
 	"time"
 )
 
@@ -44,7 +47,32 @@ type Alert struct {
 
 
 func InitDB() (*gorm.DB, error) {
-	dsn := "host=localhost user=postgres password=postgres dbname=webinterface port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+	err := config.LoadFiles("config.json")
+	if err != nil {
+		log.Fatalln("ERROR: Ошибка загрузки конфига:", err)
+	}
+	dbPort := config.Int("db_port")
+	dbAddress := config.String("db_address")
+	if dbAddress == "" {
+		dbAddress = "localhost"
+	}
+	if dbPort == 0 {
+		dbPort = 5432
+	}
+	dbName := config.String("db_name")
+	if dbName == "" {
+		dbName = "webinterface"
+	}
+	dbUser := config.String("db_user")
+	if dbUser == "" {
+		dbUser = "postgres"
+	}
+	dbPassword := config.String("db_password")
+	if dbPassword == "" {
+		dbPassword = "postgres"
+	}
+
+	dsn := "host="+dbAddress+" user="+dbUser+" password="+dbPassword+" dbname="+dbName+" port="+strconv.Itoa(dbPort)+" sslmode=disable TimeZone=Asia/Shanghai"
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 
 	if err != nil {
