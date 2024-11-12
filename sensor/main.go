@@ -23,6 +23,7 @@ type Config struct {
 
 //Правило
 type Rule struct {
+	ID int `json:"id"`
 	Layer string `json:"layer"`
 	Definition map[string]interface{} `json:"definition"`
 }
@@ -53,7 +54,7 @@ func initRules(cfg *Config) {
 			log.Println("ERROR: Не удалось получить имя таблицы")
 			continue
 		}
-		if tableName == "rules" {
+		if tableName == "rules" || tableName == "new_rules" {
 			var ruleJSON map[string]interface{}
 			var ruleBytes []byte
 			if ruleJSON, exists = serverMessage["data"].(map[string]interface{}); !exists {
@@ -64,26 +65,18 @@ func initRules(cfg *Config) {
 				log.Println("ERROR: Не удалось преобразовать правило в структуру")
 				continue
 			}
-			/*
-			type Rule struct {
-    gorm.Model
-	NetlayerID uint
-    Netlayer   Layer `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	SrcIp      string
-	DstIp      string
-	TTL        int64
-	Checksum   int64
-	SrcPort    string "SrcPort"
-	DstPort    string "DstPort"
-	PayloadContains string "PayloadContains"
-}
-			*/
 			layer, exists := ruleJSON["Netlayer"].(map[string]interface{})["Name"].(string)
 			if !exists  || layer == "" || (layer!= "TCP" && layer != "IPv4" && layer != "IPv6") {
 				log.Println("ERROR: Не удалось получить имя слоя")
 				continue
 			}
 			rule.Layer = layer
+			var ruleId int
+			if ruleId, exists = ruleJSON["ID"].(int); !exists {
+				log.Println("ERROR: Не удалось преобразовать правило в JSON")
+				continue
+			}
+			rule.ID = ruleId
 			definition := map[string]interface{}{}
 			for key, value := range ruleJSON {
 				if key == "SrcIp"{
@@ -110,6 +103,22 @@ func initRules(cfg *Config) {
 			}
 			rule.Definition = definition
 			rules = append(rules, rule)
+			log.Printf("INFO: Правило %d было добавлено", ruleId)
+		}
+		if tableName == "delete_rule" {
+			var id int
+			if id, exists = serverMessage["Id"].(int); !exists {
+				log.Println("ERROR: Не удалось преобразовать правило в JSON")
+				continue
+			}
+
+			for i, rule := range rules {
+				if rule.ID == id {
+					rules = append(rules[:i], rules[i+1:]...)
+					log.Printf("INFO: Правило %d было удалено", id)
+					break
+				}
+			}
 		}
 	}
 }
