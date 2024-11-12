@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"gorm.io/gorm"
     "log"
+    "fmt"
     "time"
 	"github.com/gorilla/websocket"
     "webinterface/models"
@@ -219,9 +220,12 @@ func GetRules(c *gin.Context, db *gorm.DB) {
     var address string = c.Request.RemoteAddr
     for _, computer := range computers {
         if computer.Address == address {
+            
             found = true
             break
         }
+        fmt.Println(computer.Address)
+        fmt.Println(address)
     }
     if !found {
         newComputerModel := models.IncludedComputer{

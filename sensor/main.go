@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 	"strings"
+//	"encoding/json"
+	"github.com/gorilla/websocket"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
 	"github.com/gookit/config/v2"
@@ -19,11 +21,12 @@ type Config struct {
 	Snaplen int  `json:"snaplen"`
 	Promisc bool `json:"promisc"`
 	Timeout time.Duration `json:"timeout"`
+	ServerAddr string `json:"server_addr"`
 }
 
 //Правило
 type Rule struct {
-	ID int `json:"id"`
+	ID uint `json:"id"`
 	Layer string `json:"layer"`
 	Definition map[string]interface{} `json:"definition"`
 }
@@ -32,7 +35,7 @@ type Rule struct {
 var ( rules []Rule )
 
 
-func sendAlert(ruleId int, conn *websocket.Conn) {
+func sendAlert(ruleId uint, conn *websocket.Conn) {
 	err := conn.WriteJSON(map[string]interface{}{
 		"rule_id": ruleId,
 		"timestamp":time.Now(),
@@ -60,21 +63,16 @@ func initRules(cfg *Config, conn *websocket.Conn) {
         	log.Println("ERROR:Ошибка при чтении сообщения:", err)
         	return
     	}
-		var tableName string
+		tableName, exists := serverMessage["table_name"];
 		var rule Rule
-		if tableName, exists := serverMessage["table_name"]; !exists {
+		if !exists {
 			log.Println("ERROR: Не удалось получить имя таблицы")
 			continue
 		}
 		if tableName == "rules" || tableName == "new_rules" {
 			var ruleJSON map[string]interface{}
-			var ruleBytes []byte
 			if ruleJSON, exists = serverMessage["data"].(map[string]interface{}); !exists {
 				log.Println("ERROR: Не удалось преобразовать правило в JSON")
-				continue
-			}
-			if err := json.Unmarshal(ruleBytes, &rule); err != nil {
-				log.Println("ERROR: Не удалось преобразовать правило в структуру")
 				continue
 			}
 			layer, exists := ruleJSON["Netlayer"].(map[string]interface{})["Name"].(string)
@@ -83,12 +81,12 @@ func initRules(cfg *Config, conn *websocket.Conn) {
 				continue
 			}
 			rule.Layer = layer
-			var ruleId int
-			if ruleId, exists = ruleJSON["ID"].(int); !exists {
+			var ruleId uint
+			if _, exists = ruleJSON["ID"]; !exists {
 				log.Println("ERROR: Не удалось преобразовать правило в JSON")
 				continue
 			}
-			rule.ID = ruleId
+			rule.ID = uint(ruleId)
 			definition := map[string]interface{}{}
 			for key, value := range ruleJSON {
 				if key == "SrcIp"{
@@ -125,7 +123,7 @@ func initRules(cfg *Config, conn *websocket.Conn) {
 			}
 
 			for i, rule := range rules {
-				if rule.ID == id {
+				if rule.ID == uint(id) {
 					rules = append(rules[:i], rules[i+1:]...)
 					log.Printf("INFO: Правило %d было удалено", id)
 					break
@@ -242,18 +240,14 @@ func checkTCP(tcpLayer gopacket.Layer, conn *websocket.Conn) bool {
 }
 
 //Проверка парвил IPv4
-func checkIPv4(ipLayer gopacket.Layer, conn *websocket.Conn) bool {
-	
+func checkIPv4(ipLayer gopacket.Layer, conn *websocket.Conn) bool {	
 	ipv4, ok := ipLayer.(*layers.IPv4)
-	if !ok {
-		ipv4, ok = ipLayer.(*layers.IPv6)
-		if !ok {
-			log.Println("ERROR: Ошибка преобразования к типу IP")
-			return false
-		}
+	if !ok{
+		log.Println("ERROR: Ошибка преобразования к типу IP")
+		return false
 	}
 	for _, rule := range rules {
-		if rule.Layer != "IPv4" && rule.Layer != "IPv6" {
+		if rule.Layer != "IPv4" {
 			continue
 		}
 		thisRule := true
@@ -315,6 +309,7 @@ func checkIPv4(ipLayer gopacket.Layer, conn *websocket.Conn) bool {
 }
 
 
+
 func sniffer(iface string, wg *sync.WaitGroup, cfg *Config, conn *websocket.Conn) {
 	defer wg.Done()
 	if iface == "dbus-system" || iface == "dbus-session" {
@@ -337,10 +332,6 @@ func sniffer(iface string, wg *sync.WaitGroup, cfg *Config, conn *websocket.Conn
         	if ipLayer != nil {
 				checkIPv4(ipLayer, conn)
         	}
-			ipv6Layer := packet.Layer(layers.LayerTypeIPv6)
-			if ipv6Layer != nil {
-				checkIPv4(ipv6Layer, conn)
-			}
 			tcpLayer := packet.Layer(layers.LayerTypeTCP)
 			if tcpLayer != nil {
 				checkTCP(tcpLayer, conn)
