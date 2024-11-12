@@ -23,6 +23,7 @@ type Config struct {
 
 //Правило
 type Rule struct {
+	ID int `json:"id"`
 	Layer string `json:"layer"`
 	Definition map[string]interface{} `json:"definition"`
 }
@@ -30,38 +31,113 @@ type Rule struct {
 
 var ( rules []Rule )
 
-func initRules() {
-	firstRuleIPv4 := Rule{
-		Layer: "IPv4",
-		Definition: map[string]interface{}{
-			"SrcIp": "127.0.0.1",
-			"DstIp": "127.0.0.1",
-			"TTL": 64,
-		},
-	}
 
-	firstRuleIPv6 := Rule{
-		Layer: "IPv6",
-		Definition: map[string]interface{}{
-			"SrcIp": "64:ff9b::142a:491a",
-			"DstIp": "2a03:d000:42a0:bf0c:516b:b87e:577f:5f36",
-		},
+func sendAlert(ruleId int, conn *websocket.Conn) {
+	err := conn.WriteJSON(map[string]interface{}{
+		"rule_id": ruleId,
+		"timestamp":time.Now(),
+	})
+	if err!=nil {
+		log.Fatalln("ERROR: Не получилось отпраивть сработку серверу:",err)
+		return
 	}
+}
 
-	firstRuleTCP := Rule{
-		Layer: "TCP",
-		Definition: map[string]interface{}{
-			"SrcPort": "*",
-			"DstPort": "*",
-			"PayloadContains":"http",
-		},
+func initRules(cfg *Config, conn *websocket.Conn) {
+	
+    // Устанавливаем соединение с WebSocket-сервером
+
+	err := conn.WriteJSON(map[string]interface{}{
+		"name": cfg.ComputerName,
+	})
+	if err!=nil {
+		log.Fatalln("ERROR: Не получилось отпраивть идентификационные данные серверу:",err)
+		return
 	}
-	rules = append(rules, firstRuleIPv4, firstRuleIPv6, firstRuleTCP)
+    for {
+        var serverMessage = map[string]interface{}{}
+    	if err := conn.ReadJSON(&serverMessage); err != nil {
+        	log.Println("ERROR:Ошибка при чтении сообщения:", err)
+        	return
+    	}
+		var tableName string
+		var rule Rule
+		if tableName, exists := serverMessage["table_name"]; !exists {
+			log.Println("ERROR: Не удалось получить имя таблицы")
+			continue
+		}
+		if tableName == "rules" || tableName == "new_rules" {
+			var ruleJSON map[string]interface{}
+			var ruleBytes []byte
+			if ruleJSON, exists = serverMessage["data"].(map[string]interface{}); !exists {
+				log.Println("ERROR: Не удалось преобразовать правило в JSON")
+				continue
+			}
+			if err := json.Unmarshal(ruleBytes, &rule); err != nil {
+				log.Println("ERROR: Не удалось преобразовать правило в структуру")
+				continue
+			}
+			layer, exists := ruleJSON["Netlayer"].(map[string]interface{})["Name"].(string)
+			if !exists  || layer == "" || (layer!= "TCP" && layer != "IPv4" && layer != "IPv6") {
+				log.Println("ERROR: Не удалось получить имя слоя")
+				continue
+			}
+			rule.Layer = layer
+			var ruleId int
+			if ruleId, exists = ruleJSON["ID"].(int); !exists {
+				log.Println("ERROR: Не удалось преобразовать правило в JSON")
+				continue
+			}
+			rule.ID = ruleId
+			definition := map[string]interface{}{}
+			for key, value := range ruleJSON {
+				if key == "SrcIp"{
+					definition["SrcIp"] = value
+				}
+				if key == "DstIp"{
+					definition["DstIp"] = value
+				}
+				if key == "TTL"{
+					definition["TTL"] = value
+				}
+				if key == "Checksum"{
+					definition["Checksum"] = value
+				}
+				if key == "SrcPort"{
+					definition["SrcPort"] = value
+				}
+				if key == "DstPort"{
+					definition["DstPort"] = value
+				}
+				if key == "PayloadContains"{
+					definition["PayloadContains"] = value
+				}
+			}
+			rule.Definition = definition
+			rules = append(rules, rule)
+			log.Printf("INFO: Правило %d было добавлено", ruleId)
+		}
+		if tableName == "delete_rule" {
+			var id int
+			if id, exists = serverMessage["Id"].(int); !exists {
+				log.Println("ERROR: Не удалось преобразовать правило в JSON")
+				continue
+			}
+
+			for i, rule := range rules {
+				if rule.ID == id {
+					rules = append(rules[:i], rules[i+1:]...)
+					log.Printf("INFO: Правило %d было удалено", id)
+					break
+				}
+			}
+		}
+	}
 }
 
 
 //Проверка парвил TCP
-func checkTCP(tcpLayer gopacket.Layer) bool {
+func checkTCP(tcpLayer gopacket.Layer, conn *websocket.Conn) bool {
 	tcp, ok := tcpLayer.(*layers.TCP)
 	
 	if !ok {
@@ -157,21 +233,27 @@ func checkTCP(tcpLayer gopacket.Layer) bool {
 			}
 		}
 		if thisRule {
-			fmt.Println("INFO: Правило TCP прошло проверку")
+			log.Println("INFO: Правило TCP прошло проверку")
+			sendAlert(rule.ID, conn)
 			return true
 		}
 	}
 	return false
 }
+
 //Проверка парвил IPv4
-func checkIPv4(ipLayer gopacket.Layer) bool {
+func checkIPv4(ipLayer gopacket.Layer, conn *websocket.Conn) bool {
+	
 	ipv4, ok := ipLayer.(*layers.IPv4)
 	if !ok {
-		log.Println("ERROR: Ошибка преобразования к типу IPv4")
-		return false
+		ipv4, ok = ipLayer.(*layers.IPv6)
+		if !ok {
+			log.Println("ERROR: Ошибка преобразования к типу IP")
+			return false
+		}
 	}
 	for _, rule := range rules {
-		if rule.Layer != "IPv4" {
+		if rule.Layer != "IPv4" && rule.Layer != "IPv6" {
 			continue
 		}
 		thisRule := true
@@ -224,7 +306,8 @@ func checkIPv4(ipLayer gopacket.Layer) bool {
 			}
 		}
 		if thisRule {
-			fmt.Println("Правило прошло проверку")
+			log.Println("INFO:Правило прошло проверку")
+			sendAlert(rule.ID, conn)
 			return true
 		}
 	}
@@ -232,7 +315,7 @@ func checkIPv4(ipLayer gopacket.Layer) bool {
 }
 
 
-func sniffer(iface string, wg *sync.WaitGroup, cfg *Config) {
+func sniffer(iface string, wg *sync.WaitGroup, cfg *Config, conn *websocket.Conn) {
 	defer wg.Done()
 	if iface == "dbus-system" || iface == "dbus-session" {
 		return
@@ -247,18 +330,22 @@ func sniffer(iface string, wg *sync.WaitGroup, cfg *Config) {
 	//Запуск прослушивания
 	source := gopacket.NewPacketSource(handle, handle.LinkType())
 	for packet := range source.Packets() {
-		/*ipLayer := packet.Layer(layers.LayerTypeIPv4)
-        if ipLayer != nil {
-			checkIPv4(ipLayer)
-        }*/
-		/*ipv6Layer := packet.Layer(layers.LayerTypeIPv6)
-		if ipv6Layer != nil {
-			checkIPv6(ipv6Layer)
-		}*/
-		tcpLayer := packet.Layer(layers.LayerTypeTCP)
-		if tcpLayer != nil {
-			checkTCP(tcpLayer)
-		}
+		wg.Add(1)
+		go func(packet gopacket.Packet) {
+			defer wg.Done()
+			ipLayer := packet.Layer(layers.LayerTypeIPv4)
+        	if ipLayer != nil {
+				checkIPv4(ipLayer, conn)
+        	}
+			ipv6Layer := packet.Layer(layers.LayerTypeIPv6)
+			if ipv6Layer != nil {
+				checkIPv4(ipv6Layer, conn)
+			}
+			tcpLayer := packet.Layer(layers.LayerTypeTCP)
+			if tcpLayer != nil {
+				checkTCP(tcpLayer, conn)
+			}
+		}(packet)
 	}
 }
 
@@ -287,12 +374,13 @@ func main() {
 	snaplen := config.Int("snaplen")
     promisc := config.Bool("promisc")
 	computerName := config.String("computerName")
-
+	serverAddr := config.String("serverAddr")
 	cfg := &Config{
 		ComputerName: computerName,
 		Snaplen: snaplen,
 		Promisc: promisc,
 		Timeout: pcap.BlockForever,
+		ServerAddr: serverAddr,
 	}
 
 
@@ -303,15 +391,27 @@ func main() {
 	if computerName == "" {
 		cfg.ComputerName = "myComputer"
 	}
+
+	if serverAddr == "" {
+		cfg.ServerAddr = "127.0.0.1:9000"
+	}
 	
+	conn, _, err := websocket.DefaultDialer.Dial(cfg.ServerAddr, nil)
+    if err != nil {
+        log.Fatal("ERROR:Ошибка подключения к вебу:", err)
+        os.Exit(1)
+    }
+
+    defer conn.Close()
+
 	//Запуск прослушивания интерфейсов
-	initRules()
+	initRules(cfg,conn)
 	wg := new(sync.WaitGroup)
 
 	for _, device := range devices {
 		wg.Add(1)
 		
-		go sniffer(device.Name, wg, cfg)
+		go sniffer(device.Name, wg, cfg, conn)
 	}
 	wg.Wait()
 

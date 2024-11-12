@@ -1,5 +1,6 @@
 {
     "computerName":"myComputer",
     "snaplen":1600,
-    "promisc":false
+    "promisc":false,
+    "serverAddr":"http://127.0.0.1:9000/sensorconn"
 }

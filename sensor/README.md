@@ -11,4 +11,5 @@ sudo groupadd pcap
 sudo usermod -a -G pcap $USER
 sudo chgrp pcap /usr/sbin/tcpdump
 sudo chmod 750 /usr/sbin/tcpdump
+go get github.com/gorilla/websocket
 ```

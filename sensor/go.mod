@@ -9,6 +9,7 @@ require (
 	github.com/gookit/config v1.1.0 // indirect
 	github.com/gookit/config/v2 v2.2.5 // indirect
 	github.com/gookit/goutil v0.6.15 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/imdario/mergo v0.3.6 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect

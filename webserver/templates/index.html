@@ -1,0 +1,120 @@
+<html>
+<head>
+    <title>Web Server</title>
+    <link rel="stylesheet" href="static/css/styles.css">
+</head>
+<body>
+    <script type="text/javascript" src="static/js/script.js"></script>
+    <div class="header">
+        Simple SIEM
+    </div>
+    <div class="content">
+        <div class="contentRow">
+            <div class="computersBlock">
+                <div class="computersBlockHeader">
+                    Подключённые компьютеры
+                </div>
+                <div class="computersBlockContent" id="computersTable">
+                    <div class="computersBlockContentRow">
+                        <div>
+                            Компьютер
+                        </div>
+                        <div>
+                            Адрес
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="rulesBlock">
+                <div class="rulesBlockHeader">
+                    Правила <div class="addButton">+</div>
+                </div>
+                <div class="rulesBlockContent" id="rulesTable">
+                    <div class="rulesBlockContentRow">
+                        <div class="rulesCell">
+                            &nbsp;
+                        </div>
+                        <div class="rulesCell">
+                            Layer
+                        </div>
+                        <div class="rulesCell">
+                            SrcIP
+                        </div>
+                        <div class="rulesCell">
+                            DstIP
+                        </div>
+                        <div class="rulesCell">
+                            Contains
+                        </div>
+                        <div class="rulesCell">
+                            SrcPort
+                        </div>
+                        <div class="rulesCell">
+                            DstPort
+                        </div>
+                        <div class="rulesCell">
+                            Checksum
+                        </div>
+                        <div class="rulesCell">
+                            TTL
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+        <div class="contentRowAlerts">
+            <div class="alertsHeader">
+                Сработки
+            </div>
+            <div class="alertsTable" id="alertsTable">
+                <div class="rulesBlockContentRow">
+                    <div class="rulesCell">
+                        Компьютер
+                    </div>
+                    <div class="rulesCell">
+                        Время
+                    </div>
+                    <div class="rulesCell">
+                        Layer
+                    </div>
+                    <div class="rulesCell">
+                        SrcIP
+                    </div>
+                    <div class="rulesCell">
+                        DstIP
+                    </div>
+                    <div class="rulesCell">
+                        Contains
+                    </div>
+                    <div class="rulesCell">
+                        SrcPort
+                    </div>
+                    <div class="rulesCell">
+                        DstPort
+                    </div>
+                    <div class="rulesCell">
+                        Checksum
+                    </div>
+                    <div class="rulesCell">
+                        TTL
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const ws = new WebSocket("ws://localhost:9000/ws");
+        ws.onopen = function() {
+            console.log("Подключено к WebSocket");
+        };
+        ws.onmessage = onMessage;
+        ws.onclose = function() {
+            console.log("WebSocket закрыт");
+        };
+        ws.onerror = function(error) {
+            console.error("Ошибка WebSocket:", error);
+        };
+    </script>
+</body>
+</html>
