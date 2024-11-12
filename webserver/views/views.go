@@ -73,7 +73,6 @@ func WSHandler(c *gin.Context, db *gorm.DB) {
     }
 
     clients = append(clients, conn)
-    fmt.Println(clients)
     defer closeConn(conn)
     
     var computers []models.IncludedComputer
@@ -131,65 +130,16 @@ func WSHandler(c *gin.Context, db *gorm.DB) {
     
     //Ожидание подключения новых компьютеров или сработок
     for {
-        select {
-        case alert := <-alertsChanel:
-            message := AlertMessage{
-                TableName: "new_alerts",
-                Data:      alert,
+        computer := <-compChanel
+        message := ComputerMessage{
+            TableName: "new_computers",
+            Data:      computer,
+        }
+        for _, compConnection := range clients {
+            if err := compConnection.WriteJSON(message); err != nil {
+                log.Println("Ошибка при отправке сообщения:", err)
+                return
             }
-            for _, compConnection := range clients {
-                if err := compConnection.WriteJSON(message); err != nil {
-                    log.Println("Ошибка при отправке сообщения:", err)
-                    return
-                }
-            }
-
-        case computer := <-compChanel:
-            message := ComputerMessage{
-                TableName: "new_computers",
-                Data:      computer,
-            }
-            for _, compConnection := range clients {
-                if err := compConnection.WriteJSON(message); err != nil {
-                    log.Println("Ошибка при отправке сообщения:", err)
-                    return
-                }
-            }
-        /*case rule := <-rulesChanel:
-            message := RuleMessage{
-                TableName:"new_rule",
-                Data: rule,
-            }
-            for _, compConnection := range clients {
-                if err := compConnection.WriteJSON(message); err != nil {
-                    fmt.Println("error")
-                    log.Println("Ошибка при отправке сообщения:", err)
-                    return
-                }
-            }
-            for _, sensor := range sensors {
-                if err := sensor.WriteJSON(message); err != nil {
-                    log.Println("Ошибка при отправке сообщения:", err)
-                    return
-                }
-            }
-        case deletedID := <-deleteRules:
-            message := map[string]interface{}{
-                "TableName":"delete_rule",
-                "Id": deletedID,
-            }
-            for _, compConnection := range clients {
-                if err := compConnection.WriteJSON(message); err != nil {
-                    log.Println("Ошибка при отправке сообщения:", err)
-                    return
-                }
-            }
-            for _, sensor := range sensors {
-                if err := sensor.WriteJSON(message); err != nil {
-                    log.Println("Ошибка при отправке сообщения:", err)
-                    return
-                }
-            }*/
         }
     }
     
@@ -220,17 +170,16 @@ func GetRules(c *gin.Context, db *gorm.DB) {
         log.Println("Ошибка при получении записей:", err)
         return
     }
+    
     var found bool = false
     var address string = c.Request.RemoteAddr
     for _, computer := range computers {
-        if computer.Address == address {
-            
+        if computer.Address == address {    
             found = true
             break
         }
-        fmt.Println(computer.Address)
-        fmt.Println(address)
     }
+    
     if !found {
         newComputerModel := models.IncludedComputer{
             Name:    newComp["name"].(string),
@@ -240,15 +189,18 @@ func GetRules(c *gin.Context, db *gorm.DB) {
             log.Println("Ошибка при создании записи:", err)
             return
         }
-        compChanel <- newComputerModel
+        select {
+        case compChanel <- newComputerModel:
+        default:
+            log.Println("Ошибка: канал compChanel переполнен или закрыт")
+        }
     }
-
+    
     var myComputer models.IncludedComputer
     if err := db.Where("address = ?", address).First(&myComputer).Error; err != nil {
         log.Println("ERROR: Компьютер не найден:", err)
         return
     }
-    
     //Инициализация правил
     for _, rule := range rules {
         message := RuleMessage{
@@ -267,17 +219,17 @@ func GetRules(c *gin.Context, db *gorm.DB) {
         if err := conn.ReadJSON(&newAlert); err != nil {
             log.Println("Ошибка при чтении сообщения:", err)   
         }
-        ruleId, exists := newAlert["rule_id"].(uint)
+        ruleFloat, exists := newAlert["rule_id"].(float64)
         if !exists {
             log.Println("ERROR: Не удалось получить ID правила")
             continue
         }
+        ruleId := uint(ruleFloat)
         var rule models.Rule
         if err := db.Where("id = ?", ruleId).First(&rule).Error; err != nil {
             log.Println("ERROR: Правило не найдено:", err)
             continue
         }
-         
         newAlertModel := models.Alert{
             ComputerID: myComputer.ID,
             Computer:   myComputer,
@@ -288,11 +240,22 @@ func GetRules(c *gin.Context, db *gorm.DB) {
         if timestamp, exists:= newAlert["timestamp"].(time.Time); exists {
             newAlertModel.Timestamp = timestamp
         }
+        fmt.Println("HERE4")
         if err := db.Create(&newAlertModel).Error; err != nil {
             log.Println("ERROR: Ошибка при создании записи:", err)
             continue
         }
-        alertsChanel <- newAlertModel
+        message := AlertMessage{
+            TableName: "new_alerts",
+            Data:      newAlertModel,
+        }
+        fmt.Println(message)
+        for _, compConnection := range clients {
+            if err := compConnection.WriteJSON(message); err != nil {
+                log.Println("Ошибка при отправке сообщения:", err)
+                return
+            }
+        }
     }
 }
 
@@ -370,7 +333,6 @@ func AddRule(c *gin.Context, db *gorm.DB) {
     }
     for _, compConnection := range clients {
         if err := compConnection.WriteJSON(message); err != nil {
-            fmt.Println("error")
             log.Println("Ошибка при отправке сообщения:", err)
             return
         }

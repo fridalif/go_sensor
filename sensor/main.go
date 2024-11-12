@@ -2,7 +2,7 @@ package main
 
 import (
 	"os"
-	"fmt"
+//	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -34,8 +34,11 @@ type Rule struct {
 
 var ( rules []Rule )
 
+var mu sync.Mutex
 
 func sendAlert(ruleId uint, conn *websocket.Conn) {
+	mu.Lock()
+	defer mu.Unlock()
 	err := conn.WriteJSON(map[string]interface{}{
 		"rule_id": ruleId,
 		"timestamp":time.Now(),
@@ -57,6 +60,7 @@ func initRules(cfg *Config, conn *websocket.Conn) {
 		log.Fatalln("ERROR: Не получилось отпраивть идентификационные данные серверу:",err)
 		return
 	}
+
     for {
         var serverMessage = map[string]interface{}{}
     	if err := conn.ReadJSON(&serverMessage); err != nil {
@@ -160,17 +164,17 @@ func checkTCP(tcpLayer gopacket.Layer, conn *websocket.Conn) bool {
 						break
 					}
 				case "Seq":
-					if value != -1 && uint32(value.(int)) != tcp.Seq {
+					if value != -1 && uint32(value.(int64)) != tcp.Seq {
 						thisRule = false
 						break
 					}
 				case "Ack":
-					if value != -1 && uint32(value.(int)) != tcp.Ack {
+					if value != -1 && uint32(value.(int64)) != tcp.Ack {
 						thisRule = false
 						break
 					}
 				case "DataOffset":
-					if value != -1 && uint8(value.(int)) != tcp.DataOffset {
+					if value != -1 && uint8(value.(int64)) != tcp.DataOffset {
 						thisRule = false
 						break
 					}
@@ -224,9 +228,6 @@ func checkTCP(tcpLayer gopacket.Layer, conn *websocket.Conn) bool {
 						thisRule = false
 						break	
 					}
-				default:
-					thisRule = false
-					log.Println("ERROR: Неизвестный ключ в правиле TCP:", key)
 			}
 		}
 		if thisRule {
@@ -250,6 +251,7 @@ func checkIPv4(ipLayer gopacket.Layer, conn *websocket.Conn) bool {
 			continue
 		}
 		thisRule := true
+
 		for key, value := range rule.Definition {
 			switch key {
 				case "SrcIp":
@@ -262,44 +264,20 @@ func checkIPv4(ipLayer gopacket.Layer, conn *websocket.Conn) bool {
 						thisRule = false
 						break
 					}
-				case "Protocol":
-					if ipv4.Protocol.String() != value && value != "*" {
-						thisRule = false
-						break
-					}
-				case "IHL": 
-					if value != -1 && uint8(value.(int)) != ipv4.IHL {
-						thisRule = false
-						break
-					}
-				case "TOS": 
-					if value != -1 && uint8(value.(int)) != ipv4.TOS {
-						thisRule = false
-						break
-					}
-				case "Length": 
-					if value != -1 && uint16(value.(int)) != ipv4.Length {
-						thisRule = false
-						break
-					}
 				case "TTL": 
-					if value != -1 && ipv4.TTL != uint8(value.(int)) {
-						fmt.Println(ipv4.TTL, value)
+					if value.(int64)!= -1 && ipv4.TTL != uint8(value.(int64)) {
 						thisRule = false
 						break
 					}
 				case "Checksum": 
-					if value != -1 && uint16(value.(int)) != ipv4.Checksum {
+					if value.(int64) != -1 && uint16(value.(int64)) != ipv4.Checksum {
 						thisRule = false
 						break
-					}
-				default:
-					thisRule = false
-					log.Println("ERROR: Неизвестный ключ в правиле IPv4:", key)
+					}				
 			}
 		}
 		if thisRule {
-			log.Println("INFO:Правило прошло проверку")
+			//log.Println("INFO:Правило прошло проверку")
 			sendAlert(rule.ID, conn)
 			return true
 		}
@@ -328,7 +306,9 @@ func sniffer(iface string, wg *sync.WaitGroup, cfg *Config, conn *websocket.Conn
 		go func(packet gopacket.Packet) {
 			defer wg.Done()
 			ipLayer := packet.Layer(layers.LayerTypeIPv4)
-        	if ipLayer != nil {
+        	
+			if ipLayer != nil {
+				
 				checkIPv4(ipLayer, conn)
         	}
 			tcpLayer := packet.Layer(layers.LayerTypeTCP)
@@ -395,7 +375,7 @@ func main() {
     defer conn.Close()
 
 	//Запуск прослушивания интерфейсов
-	initRules(cfg,conn)
+	go initRules(cfg,conn)
 	wg := new(sync.WaitGroup)
 
 	for _, device := range devices {
