@@ -35,6 +35,7 @@ func main() {
 	router.GET("/ws", func (c *gin.Context) {views.WSHandler(c, db)},)
 	router.GET("/sensorconn", func (c *gin.Context) {views.GetRules(c, db)},)
 	router.POST("/api/add_rule", func(c *gin.Context){views.AddRule(c,db)},)
+	router.DELETE("/api/delete_rule", func(c *gin.Context){views.DeleteRule(c,db)},)
   
 	err = router.Run(":9000")
 	if err != nil {

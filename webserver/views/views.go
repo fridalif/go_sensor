@@ -356,9 +356,51 @@ func AddRule(c *gin.Context, db *gorm.DB) {
         c.AbortWithStatus(http.StatusInternalServerError)
         return
     }
+    rulesChanel <- rule
     response := gin.H{
         "status":  "success",
         "message": "Правило успешно добавлено",
+    }
+
+    c.JSON(http.StatusOK, response)
+}
+
+func DeleteRule(c* gin.Context, db *gorm.DB){
+    if c.Request.Method != "DELETE" {
+        c.AbortWithStatus(http.StatusMethodNotAllowed)
+        return
+    }
+    var ruleInterface map[string]interface{}
+    if err := c.BindJSON(&ruleInterface); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+    }
+    var id uint
+    if id, exists := ruleInterface["rule_id"].(uint), !exists{
+        response := gin.H{
+            "status":"error",
+            "message":"Не указан id правила",
+            "data":nil,
+        }
+        c.JSON(http.StatusBadRequest, response)
+        return
+    }
+    var rule Rule
+    result := db.First(&rule, id)
+    if result.Error != nil{
+        response := gin.H{
+            "status":"error",
+            "message":"Нет правила с таким id",
+            "data":nil,
+        }
+        c.JSON(http.StatusBadRequest, response)
+        return
+    }
+    db.Delete(&user)
+    deleteRules <- rule.ID
+    response := gin.H{
+        "status":"Success",
+        "message":"Удалено",
+        "data":nil,
     }
     c.JSON(http.StatusOK, response)
 }
