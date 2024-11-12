@@ -31,8 +31,87 @@ type Rule struct {
 var ( rules []Rule )
 
 
-func initRules() {
+func initRules(cfg *Config) {
 	
+    // Устанавливаем соединение с WebSocket-сервером
+    conn, _, err := websocket.DefaultDialer.Dial(url, nil)
+    if err != nil {
+        log.Fatal("ERROR:Ошибка подключения:", err)
+        os.Exit(1)
+    }
+    defer conn.Close()
+
+    for {
+        var serverMessage = map[string]interface{}{}
+    	if err := conn.ReadJSON(&serverMessage); err != nil {
+        	log.Println("ERROR:Ошибка при чтении сообщения:", err)
+        	return
+    	}
+		var tableName string
+		var rule Rule
+		if tableName, exists := serverMessage["table_name"]; !exists {
+			log.Println("ERROR: Не удалось получить имя таблицы")
+			continue
+		}
+		if tableName == "rules" {
+			var ruleJSON map[string]interface{}
+			var ruleBytes []byte
+			if ruleJSON, exists = serverMessage["data"].(map[string]interface{}); !exists {
+				log.Println("ERROR: Не удалось преобразовать правило в JSON")
+				continue
+			}
+			if err := json.Unmarshal(ruleBytes, &rule); err != nil {
+				log.Println("ERROR: Не удалось преобразовать правило в структуру")
+				continue
+			}
+			/*
+			type Rule struct {
+    gorm.Model
+	NetlayerID uint
+    Netlayer   Layer `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	SrcIp      string
+	DstIp      string
+	TTL        int64
+	Checksum   int64
+	SrcPort    string "SrcPort"
+	DstPort    string "DstPort"
+	PayloadContains string "PayloadContains"
+}
+			*/
+			layer, exists := ruleJSON["Netlayer"].(map[string]interface{})["Name"].(string)
+			if !exists  || layer == "" || (layer!= "TCP" && layer != "IPv4" && layer != "IPv6") {
+				log.Println("ERROR: Не удалось получить имя слоя")
+				continue
+			}
+			rule.Layer = layer
+			definition := map[string]interface{}{}
+			for key, value := range ruleJSON {
+				if key == "SrcIp"{
+					definition["SrcIp"] = value
+				}
+				if key == "DstIp"{
+					definition["DstIp"] = value
+				}
+				if key == "TTL"{
+					definition["TTL"] = value
+				}
+				if key == "Checksum"{
+					definition["Checksum"] = value
+				}
+				if key == "SrcPort"{
+					definition["SrcPort"] = value
+				}
+				if key == "DstPort"{
+					definition["DstPort"] = value
+				}
+				if key == "PayloadContains"{
+					definition["PayloadContains"] = value
+				}
+			}
+			rule.Definition = definition
+			rules = append(rules, rule)
+		}
+	}
 }
 
 
@@ -284,9 +363,13 @@ func main() {
 	if computerName == "" {
 		cfg.ComputerName = "myComputer"
 	}
+
+	if serverAddr == "" {
+		cfg.ServerAddr = "127.0.0.1:9000"
+	}
 	
 	//Запуск прослушивания интерфейсов
-	initRules()
+	initRules(cfg)
 	wg := new(sync.WaitGroup)
 
 	for _, device := range devices {
