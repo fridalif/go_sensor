@@ -81,12 +81,11 @@ func initRules(cfg *Config, conn *websocket.Conn) {
 				continue
 			}
 			rule.Layer = layer
-			var ruleId uint
 			if _, exists = ruleJSON["ID"]; !exists {
 				log.Println("ERROR: Не удалось преобразовать правило в JSON")
 				continue
 			}
-			rule.ID = uint(ruleId)
+			rule.ID = uint(ruleJSON["ID"].(float64))
 			definition := map[string]interface{}{}
 			for key, value := range ruleJSON {
 				if key == "SrcIp"{
@@ -96,10 +95,10 @@ func initRules(cfg *Config, conn *websocket.Conn) {
 					definition["DstIp"] = value
 				}
 				if key == "TTL"{
-					definition["TTL"] = value
+					definition["TTL"] = int64(value.(float64))
 				}
 				if key == "Checksum"{
-					definition["Checksum"] = value
+					definition["Checksum"] = int64(value.(float64))
 				}
 				if key == "SrcPort"{
 					definition["SrcPort"] = value
@@ -113,7 +112,7 @@ func initRules(cfg *Config, conn *websocket.Conn) {
 			}
 			rule.Definition = definition
 			rules = append(rules, rule)
-			log.Printf("INFO: Правило %d было добавлено", ruleId)
+			log.Printf("INFO: Правило %d было добавлено", rule.ID)
 		}
 		if tableName == "delete_rule" {
 			var id int
