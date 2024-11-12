@@ -32,15 +32,16 @@ type Rule struct {
 var ( rules []Rule )
 
 
-func initRules(cfg *Config) {
+func sendAlert(ruleId int, conn *websocket.Conn) {
+	conn.WriteJSON(map[string]interface{}{
+		"rule_id": ruleId,
+		"computer_id": computerId,
+	})
+}
+
+func initRules(cfg *Config, conn *websocket.Conn) {
 	
     // Устанавливаем соединение с WebSocket-сервером
-    conn, _, err := websocket.DefaultDialer.Dial(url, nil)
-    if err != nil {
-        log.Fatal("ERROR:Ошибка подключения:", err)
-        os.Exit(1)
-    }
-    defer conn.Close()
 
 	conn.WriteJSON(map[string]interface{}{
 		"name": cfg.ComputerName,
@@ -128,7 +129,7 @@ func initRules(cfg *Config) {
 
 
 //Проверка парвил TCP
-func checkTCP(tcpLayer gopacket.Layer) bool {
+func checkTCP(tcpLayer gopacket.Layer, conn *websocket.Conn) bool {
 	tcp, ok := tcpLayer.(*layers.TCP)
 	
 	if !ok {
@@ -230,15 +231,20 @@ func checkTCP(tcpLayer gopacket.Layer) bool {
 	}
 	return false
 }
+
 //Проверка парвил IPv4
-func checkIPv4(ipLayer gopacket.Layer) bool {
+func checkIPv4(ipLayer gopacket.Layer, conn *websocket.Conn) bool {
+	
 	ipv4, ok := ipLayer.(*layers.IPv4)
 	if !ok {
-		log.Println("ERROR: Ошибка преобразования к типу IPv4")
-		return false
+		ipv4, ok = ipLayer.(*layers.IPv6)
+		if !ok {
+			log.Println("ERROR: Ошибка преобразования к типу IP")
+			return false
+		}
 	}
 	for _, rule := range rules {
-		if rule.Layer != "IPv4" {
+		if rule.Layer != "IPv4" && rule.Layer != "IPv6" {
 			continue
 		}
 		thisRule := true
@@ -299,7 +305,7 @@ func checkIPv4(ipLayer gopacket.Layer) bool {
 }
 
 
-func sniffer(iface string, wg *sync.WaitGroup, cfg *Config) {
+func sniffer(iface string, wg *sync.WaitGroup, cfg *Config, conn *websocket.Conn) {
 	defer wg.Done()
 	if iface == "dbus-system" || iface == "dbus-session" {
 		return
@@ -319,15 +325,15 @@ func sniffer(iface string, wg *sync.WaitGroup, cfg *Config) {
 			defer wg.Done()
 			ipLayer := packet.Layer(layers.LayerTypeIPv4)
         	if ipLayer != nil {
-				checkIPv4(ipLayer)
+				checkIPv4(ipLayer, conn)
         	}
 			ipv6Layer := packet.Layer(layers.LayerTypeIPv6)
 			if ipv6Layer != nil {
-				checkIPv6(ipv6Layer)
+				checkIPv4(ipv6Layer, conn)
 			}
 			tcpLayer := packet.Layer(layers.LayerTypeTCP)
 			if tcpLayer != nil {
-				checkTCP(tcpLayer)
+				checkTCP(tcpLayer, conn)
 			}
 		}(packet)
 	}
@@ -380,14 +386,22 @@ func main() {
 		cfg.ServerAddr = "127.0.0.1:9000"
 	}
 	
+	conn, _, err := websocket.DefaultDialer.Dial(cfg.ServerAddr, nil)
+    if err != nil {
+        log.Fatal("ERROR:Ошибка подключения к вебу:", err)
+        os.Exit(1)
+    }
+
+    defer conn.Close()
+
 	//Запуск прослушивания интерфейсов
-	initRules(cfg)
+	initRules(cfg,conn)
 	wg := new(sync.WaitGroup)
 
 	for _, device := range devices {
 		wg.Add(1)
 		
-		go sniffer(device.Name, wg, cfg)
+		go sniffer(device.Name, wg, cfg, conn)
 	}
 	wg.Wait()
 
