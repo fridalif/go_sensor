@@ -31,6 +31,7 @@ type Rule struct {
 
 var ( rules []Rule )
 
+func 
 
 func initRules(cfg *Config) {
 	
@@ -42,6 +43,9 @@ func initRules(cfg *Config) {
     }
     defer conn.Close()
 
+	conn.WriteJSON(map[string]interface{}{
+		"name": cfg.ComputerName,
+	})
     for {
         var serverMessage = map[string]interface{}{}
     	if err := conn.ReadJSON(&serverMessage); err != nil {
@@ -314,14 +318,14 @@ func sniffer(iface string, wg *sync.WaitGroup, cfg *Config) {
 		wg.Add(1)
 		go func(packet gopacket.Packet) {
 			defer wg.Done()
-			/*ipLayer := packet.Layer(layers.LayerTypeIPv4)
+			ipLayer := packet.Layer(layers.LayerTypeIPv4)
         	if ipLayer != nil {
 				checkIPv4(ipLayer)
-        	}*/
-			/*ipv6Layer := packet.Layer(layers.LayerTypeIPv6)
+        	}
+			ipv6Layer := packet.Layer(layers.LayerTypeIPv6)
 			if ipv6Layer != nil {
 				checkIPv6(ipv6Layer)
-			}*/
+			}
 			tcpLayer := packet.Layer(layers.LayerTypeTCP)
 			if tcpLayer != nil {
 				checkTCP(tcpLayer)

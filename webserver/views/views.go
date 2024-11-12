@@ -214,8 +214,9 @@ func GetRules(c *gin.Context, db *gorm.DB) {
         return
     }
     var found bool = false
+    var address string = c.Request.RemoteAddr
     for _, computer := range computers {
-        if computer.Address == newComp["address"].(string) {
+        if computer.Address == address {
             found = true
             break
         }
@@ -223,7 +224,7 @@ func GetRules(c *gin.Context, db *gorm.DB) {
     if !found {
         newComputerModel := models.IncludedComputer{
             Name:    newComp["name"].(string),
-            Address: newComp["address"].(string),
+            Address: address,
         }
         if err := db.Create(&newComputerModel).Error; err != nil {
             log.Println("Ошибка при создании записи:", err)
@@ -244,56 +245,20 @@ func GetRules(c *gin.Context, db *gorm.DB) {
     }
     //вечный цикл
     for {
+        var newAlert = map[string]interface{}{}
+        if err := conn.ReadJSON(&newAlert); err != nil {
+            log.Println("Ошибка при чтении сообщения:", err)
+            
+        }
+        
     }
 }
 func Index(c *gin.Context, db *gorm.DB) {
-    
-    /* testovie dannie
-    netLayer := models.Layer{Name:"IPv4",}
-    result := db.Create(&netLayer)
-    if result.Error != nil {
-        fmt.Println(result.Error)
-    }
-    rule := models.Rule{
-        NetlayerID: netLayer.ID,
-        Netlayer:   netLayer,
-        SrcIp:      "244.178.44.111",
-        DstIp:      "244.178.44.111",
-        TTL:        64,
-        Checksum:   0,
-        SrcPort:    "*",
-        DstPort:    "*",
-        PayloadContains: "Hello, World!",
-    }
-    result = db.Create(&rule)
-    if result.Error != nil {
-        fmt.Println(result.Error)
-    }
-    includedComputer := models.IncludedComputer{
-        Name:    "Computer1",
-        Address: "244.178.44.111",
-    }
-    result = db.Create(&includedComputer)
-    if result.Error != nil {
-        fmt.Println(result.Error)
-    }
-    alert := models.Alert{
-        ComputerID: includedComputer.ID,
-        Computer:   includedComputer,
-        RuleID:     rule.ID,
-        Rule:       rule,
-        Timestamp:  time.Now(),
-    }
-    result = db.Create(&alert)
-    if result.Error != nil {
-        fmt.Println(result.Error)
-    }*/
-	c.HTML(
+ 	c.HTML(
 	  http.StatusOK,
 	  "index.html",
 	  gin.H{
 		"title": "Home Page",
-		"db":    db,
 	  },
 	)
 }
