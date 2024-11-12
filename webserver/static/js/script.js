@@ -151,6 +151,7 @@ function newAlert(alerts) {
 }
 function onMessage(event) {
     const response = JSON.parse(event.data);
+    console.log(response)
     if (response.table_name == "alerts") {
         setAlerts(response.data);
     }
@@ -163,10 +164,11 @@ function onMessage(event) {
     if (response.table_name == "new_computers") {
         setComputers(response.data);
     }
-    if (response.table_name == "new_rules") {
+    if (response.table_name == "new_rule") {
         setRules(response.data);
     }
     if (response.table_name == "new_alerts") {
         newAlert(response.data);
     }
+    console.log(response.data);
 }

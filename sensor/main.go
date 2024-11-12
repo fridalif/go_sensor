@@ -69,7 +69,7 @@ func initRules(cfg *Config, conn *websocket.Conn) {
 			log.Println("ERROR: Не удалось получить имя таблицы")
 			continue
 		}
-		if tableName == "rules" || tableName == "new_rules" {
+		if tableName == "rules" || tableName == "new_rule" {
 			var ruleJSON map[string]interface{}
 			if ruleJSON, exists = serverMessage["data"].(map[string]interface{}); !exists {
 				log.Println("ERROR: Не удалось преобразовать правило в JSON")

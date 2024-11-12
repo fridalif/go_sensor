@@ -108,7 +108,10 @@
         ws.onopen = function() {
             console.log("Подключено к WebSocket");
         };
-        ws.onmessage = onMessage;
+        ws.onmessage = function(event) {
+            onMessage(event);
+            console.log("mess");
+        };
         ws.onclose = function() {
             console.log("WebSocket закрыт");
         };

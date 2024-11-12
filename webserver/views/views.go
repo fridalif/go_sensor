@@ -73,7 +73,7 @@ func WSHandler(c *gin.Context, db *gorm.DB) {
     }
 
     clients = append(clients, conn)
-
+    fmt.Println(clients)
     defer closeConn(conn)
     
     var computers []models.IncludedComputer
@@ -143,6 +143,7 @@ func WSHandler(c *gin.Context, db *gorm.DB) {
                     return
                 }
             }
+
         case computer := <-compChanel:
             message := ComputerMessage{
                 TableName: "new_computers",
@@ -161,6 +162,7 @@ func WSHandler(c *gin.Context, db *gorm.DB) {
             }
             for _, compConnection := range clients {
                 if err := compConnection.WriteJSON(message); err != nil {
+                    fmt.Println("error")
                     log.Println("Ошибка при отправке сообщения:", err)
                     return
                 }
