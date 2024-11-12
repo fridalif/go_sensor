@@ -34,11 +34,23 @@ type RuleMessage struct {
 //каналы для синхронизации
 var alertsChanel = make(chan models.Alert)
 var compChanel = make(chan models.IncludedComputer)
-var rulesChanel = make(chan modles.Rule)
+var rulesChanel = make(chan models.Rule)
 var deleteRules = make(chan int)
 
 
 var clients = make([]*websocket.Conn, 0)
+var sensors = make([]*websocket.Conn, 0)
+
+
+func closeSensor(conn *websocket.Conn) {
+    conn.Close()
+    for i, c := range sensors {
+        if c == conn {
+            sensors = append(sensors[:i], sensors[i+1:]...)
+            break
+        }
+    }
+}
 func closeConn(conn *websocket.Conn) {
     conn.Close()
     for i, c := range clients {
@@ -123,7 +135,7 @@ func WSHandler(c *gin.Context, db *gorm.DB) {
                 Data:      alert,
             }
             for _, compConnection := range clients {
-                if err := compConenction.WriteJSON(message); err != nil {
+                if err := compConnection.WriteJSON(message); err != nil {
                     log.Println("Ошибка при отправке сообщения:", err)
                     return
                 }
@@ -134,7 +146,7 @@ func WSHandler(c *gin.Context, db *gorm.DB) {
                 Data:      computer,
             }
             for _, compConnection := range clients {
-                if err := compConenction.WriteJSON(message); err != nil {
+                if err := compConnection.WriteJSON(message); err != nil {
                     log.Println("Ошибка при отправке сообщения:", err)
                     return
                 }
@@ -145,18 +157,30 @@ func WSHandler(c *gin.Context, db *gorm.DB) {
                 Data: rule,
             }
             for _, compConnection := range clients {
-                if err := compConenction.WriteJSON(message); err != nil {
+                if err := compConnection.WriteJSON(message); err != nil {
+                    log.Println("Ошибка при отправке сообщения:", err)
+                    return
+                }
+            }
+            for _, sensor := range sensors {
+                if err := sensor.WriteJSON(message); err != nil {
                     log.Println("Ошибка при отправке сообщения:", err)
                     return
                 }
             }
         case deletedID := <-deleteRules:
-            message := {
-                TableName:"delete_rule",
-                Id: deletedID,
+            message := map[string]interface{}{
+                "TableName":"delete_rule",
+                "Id": deletedID,
             }
             for _, compConnection := range clients {
-                if err := compConenction.WriteJSON(message); err != nil {
+                if err := compConnection.WriteJSON(message); err != nil {
+                    log.Println("Ошибка при отправке сообщения:", err)
+                    return
+                }
+            }
+            for _, sensor := range sensors {
+                if err := sensor.WriteJSON(message); err != nil {
                     log.Println("Ошибка при отправке сообщения:", err)
                     return
                 }
@@ -166,7 +190,62 @@ func WSHandler(c *gin.Context, db *gorm.DB) {
     
 }
 
-
+func GetRules(c *gin.Context, db *gorm.DB) {
+    var rules []models.Rule
+    if err := db.Preload("Netlayer").Find(&rules).Error; err != nil {
+        log.Println("Ошибка при получении записей:", err)
+        return
+    }
+    conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+    if err != nil {
+        log.Println("Ошибка при установлении WebSocket-соединения:", err)
+        return
+    }
+    sensors = append(sensors, conn)
+    defer closeSensor(conn)
+    var newComp = map[string]interface{}{}
+    if err := conn.ReadJSON(&newComp); err != nil {
+        log.Println("Ошибка при чтении сообщения:", err)
+        return
+    }
+    var computers []models.IncludedComputer
+    if err := db.Find(&computers).Error; err != nil {
+        log.Println("Ошибка при получении записей:", err)
+        return
+    }
+    var found bool = false
+    for _, computer := range computers {
+        if computer.Address == newComp["address"].(string) {
+            found = true
+            break
+        }
+    }
+    if !found {
+        newComputerModel := models.IncludedComputer{
+            Name:    newComp["name"].(string),
+            Address: newComp["address"].(string),
+        }
+        if err := db.Create(&newComputerModel).Error; err != nil {
+            log.Println("Ошибка при создании записи:", err)
+            return
+        }
+        compChanel <- newComputerModel
+    }
+    //Инициализация правил
+    for _, rule := range rules {
+        message := RuleMessage{
+            TableName: "rules",
+            Data:      rule,
+        }
+        if err := conn.WriteJSON(message); err != nil {
+            log.Println("Ошибка при отправке сообщения:", err)
+            return
+        }
+    }
+    //вечный цикл
+    for {
+    }
+}
 func Index(c *gin.Context, db *gorm.DB) {
     
     /* testovie dannie

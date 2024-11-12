@@ -33,6 +33,7 @@ func main() {
 	router.Static("/static", "./static")
 	router.GET("/", func (c *gin.Context) {views.Index(c, db)},)
 	router.GET("/ws", func (c *gin.Context) {views.WSHandler(c, db)},)
+	router.GET("/sensorconn", func (c *gin.Context) {views.GetRules(c, db)},)
   
 	err = router.Run(":9000")
 	if err != nil {
