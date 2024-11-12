@@ -37,7 +37,7 @@ type RuleMessage struct {
 var alertsChanel = make(chan models.Alert)
 var compChanel = make(chan models.IncludedComputer)
 var rulesChanel = make(chan models.Rule)
-var deleteRules = make(chan int)
+var deleteRules = make(chan uint)
 
 
 var clients = make([]*websocket.Conn, 0)
@@ -258,8 +258,8 @@ func GetRules(c *gin.Context, db *gorm.DB) {
         if err := conn.ReadJSON(&newAlert); err != nil {
             log.Println("Ошибка при чтении сообщения:", err)   
         }
-        var ruleId uint
-        if ruleId, exists := newAlert["rule_id"].(uint); !exists {
+        ruleId, exists := newAlert["rule_id"].(uint)
+        if !exists {
             log.Println("ERROR: Не удалось получить ID правила")
             continue
         }
@@ -277,13 +277,13 @@ func GetRules(c *gin.Context, db *gorm.DB) {
             Timestamp:  time.Now(),
         }
         if timestamp, exists:= newAlert["timestamp"].(time.Time); exists {
-
+            newAlertModel.Timestamp = timestamp
         }
         if err := db.Create(&newAlertModel).Error; err != nil {
             log.Println("ERROR: Ошибка при создании записи:", err)
             continue
         }
-        alertChanel <- newAlertModel
+        alertsChanel <- newAlertModel
     }
 }
 
@@ -310,45 +310,38 @@ func AddRule(c *gin.Context, db *gorm.DB) {
     rule.Netlayer = netlayer
     rule.NetlayerID = netlayer.ID
     if srcIp, exists := ruleInterface["src_ip"].(string); exists{
-        rule.SrcIP = srcIp
-    }
-    else{
-        rule.SrcIP = "*"
+        rule.SrcIp = srcIp
+    } else {
+        rule.SrcIp = "*"
     }
     if dstIp, exists := ruleInterface["dst_ip"].(string); exists{
-        rule.DstIP = dstIp
-    }
-    else{
-        rule.DstIP = "*"
+        rule.DstIp = dstIp
+    } else{
+        rule.DstIp = "*"
     }
     if TTL, exists := ruleInterface["TTL"].(int64); exists{
         rule.TTL = TTL
-    }
-    else{
+    } else{
         rule.TTL = -1
     }
     if checksum, exists := ruleInterface["checksum"].(int64);exists{
         rule.Checksum = checksum
-    }
-    else{
+    } else{
         rule.Checksum = -1
     }
     if srcPort, exists := ruleInterface["src_port"].(string);exists{
         rule.SrcPort = srcPort
-    }
-    else{
+    } else{
         rule.SrcPort = "*"
     }
     if dstPort, exists := ruleInterface["dst_port"].(string); exists{
         rule.DstPort = dstPort
-    }
-    else{
+    } else{
         rule.DstPort = "*"
     }
-    if payloadContains, exists := ruleInterface["payload_contains"]; exists{
+    if payloadContains, exists := ruleInterface["payload_contains"].(string); exists{
         rule.PayloadContains = payloadContains
-    }
-    else{
+    } else{
         rule.PayloadContains = "*"
     }
     if err := db.Create(&rule).Error; err != nil {
@@ -374,8 +367,8 @@ func DeleteRule(c* gin.Context, db *gorm.DB){
     if err := c.BindJSON(&ruleInterface); err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
     }
-    var id uint
-    if id, exists := ruleInterface["rule_id"].(uint), !exists{
+    id, exists := ruleInterface["rule_id"].(uint) 
+    if !exists{
         response := gin.H{
             "status":"error",
             "message":"Не указан id правила",
@@ -384,7 +377,7 @@ func DeleteRule(c* gin.Context, db *gorm.DB){
         c.JSON(http.StatusBadRequest, response)
         return
     }
-    var rule Rule
+    var rule models.Rule
     result := db.First(&rule, id)
     if result.Error != nil{
         response := gin.H{
@@ -395,7 +388,7 @@ func DeleteRule(c* gin.Context, db *gorm.DB){
         c.JSON(http.StatusBadRequest, response)
         return
     }
-    db.Delete(&user)
+    db.Delete(&rule)
     deleteRules <- rule.ID
     response := gin.H{
         "status":"Success",
