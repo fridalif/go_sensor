@@ -232,6 +232,13 @@ func GetRules(c *gin.Context, db *gorm.DB) {
         }
         compChanel <- newComputerModel
     }
+
+    var myComputer models.IncludedComputer
+    if err := db.Where("address = ?", address).First(&myComputer).Error; err != nil {
+        log.Println("ERROR: Компьютер не найден:", err)
+        return
+    }
+    
     //Инициализация правил
     for _, rule := range rules {
         message := RuleMessage{
@@ -247,10 +254,30 @@ func GetRules(c *gin.Context, db *gorm.DB) {
     for {
         var newAlert = map[string]interface{}{}
         if err := conn.ReadJSON(&newAlert); err != nil {
-            log.Println("Ошибка при чтении сообщения:", err)
-            
+            log.Println("Ошибка при чтении сообщения:", err)   
         }
-        
+        var ruleId uint
+        if ruleId, exists := newAlert["rule_id"].(uint); !exists {
+            log.Println("ERROR: Не удалось получить ID правила")
+            continue
+        }
+        var rule models.Rule
+        if err := db.Where("id = ?", ruleId).First(&rule).Error; err != nil {
+            log.Println("ERROR: Правило не найдено:", err)
+            continue
+        }
+        newAlertModel := models.Alert{
+            ComputerID: myComputer.ID,
+            Computer:   myComputer,
+            RuleID:     rule.ID,
+            Rule:       rule,
+            Timestamp:  time.Now(),
+        }
+        if err := db.Create(&newAlertModel).Error; err != nil {
+            log.Println("ERROR: Ошибка при создании записи:", err)
+            continue
+        }
+        alertChanel <- newAlertModel
     }
 }
 func Index(c *gin.Context, db *gorm.DB) {

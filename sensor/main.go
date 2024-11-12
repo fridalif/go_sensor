@@ -31,7 +31,6 @@ type Rule struct {
 
 var ( rules []Rule )
 
-func 
 
 func initRules(cfg *Config) {
 	
