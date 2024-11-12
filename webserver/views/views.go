@@ -155,7 +155,7 @@ func WSHandler(c *gin.Context, db *gorm.DB) {
                     return
                 }
             }
-        case rule := <-rulesChanel:
+        /*case rule := <-rulesChanel:
             message := RuleMessage{
                 TableName:"new_rule",
                 Data: rule,
@@ -189,11 +189,13 @@ func WSHandler(c *gin.Context, db *gorm.DB) {
                     log.Println("Ошибка при отправке сообщения:", err)
                     return
                 }
-            }
+            }*/
         }
     }
     
 }
+
+
 
 func GetRules(c *gin.Context, db *gorm.DB) {
     var rules []models.Rule
@@ -258,6 +260,7 @@ func GetRules(c *gin.Context, db *gorm.DB) {
             return
         }
     }
+
     //вечный цикл
     for {
         var newAlert = map[string]interface{}{}
@@ -355,10 +358,28 @@ func AddRule(c *gin.Context, db *gorm.DB) {
         c.AbortWithStatus(http.StatusInternalServerError)
         return
     }
-    rulesChanel <- rule
+    
     response := gin.H{
         "status":  "success",
         "message": "Правило успешно добавлено",
+    }
+
+    message := RuleMessage{
+        TableName:"new_rule",
+        Data: rule,
+    }
+    for _, compConnection := range clients {
+        if err := compConnection.WriteJSON(message); err != nil {
+            fmt.Println("error")
+            log.Println("Ошибка при отправке сообщения:", err)
+            return
+        }
+    }
+    for _, sensor := range sensors {
+        if err := sensor.WriteJSON(message); err != nil {
+            log.Println("Ошибка при отправке сообщения:", err)
+            return
+        }
     }
 
     c.JSON(http.StatusOK, response)
@@ -396,6 +417,22 @@ func DeleteRule(c* gin.Context, db *gorm.DB){
     }
     db.Delete(&rule)
     deleteRules <- rule.ID
+    message := map[string]interface{}{
+        "TableName":"delete_rule",
+        "Id": rule.ID,
+    }
+    for _, compConnection := range clients {
+        if err := compConnection.WriteJSON(message); err != nil {
+            log.Println("Ошибка при отправке сообщения:", err)
+            continue
+        }
+    }
+    for _, sensor := range sensors {
+        if err := sensor.WriteJSON(message); err != nil {
+            log.Println("Ошибка при отправке сообщения:", err)
+            continue
+        }
+    }
     response := gin.H{
         "status":"Success",
         "message":"Удалено",
