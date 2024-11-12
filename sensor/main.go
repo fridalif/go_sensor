@@ -30,33 +30,9 @@ type Rule struct {
 
 var ( rules []Rule )
 
+
 func initRules() {
-	firstRuleIPv4 := Rule{
-		Layer: "IPv4",
-		Definition: map[string]interface{}{
-			"SrcIp": "127.0.0.1",
-			"DstIp": "127.0.0.1",
-			"TTL": 64,
-		},
-	}
-
-	firstRuleIPv6 := Rule{
-		Layer: "IPv6",
-		Definition: map[string]interface{}{
-			"SrcIp": "64:ff9b::142a:491a",
-			"DstIp": "2a03:d000:42a0:bf0c:516b:b87e:577f:5f36",
-		},
-	}
-
-	firstRuleTCP := Rule{
-		Layer: "TCP",
-		Definition: map[string]interface{}{
-			"SrcPort": "*",
-			"DstPort": "*",
-			"PayloadContains":"http",
-		},
-	}
-	rules = append(rules, firstRuleIPv4, firstRuleIPv6, firstRuleTCP)
+	
 }
 
 
@@ -291,12 +267,13 @@ func main() {
 	snaplen := config.Int("snaplen")
     promisc := config.Bool("promisc")
 	computerName := config.String("computerName")
-
+	serverAddr := config.String("serverAddr")
 	cfg := &Config{
 		ComputerName: computerName,
 		Snaplen: snaplen,
 		Promisc: promisc,
 		Timeout: pcap.BlockForever,
+		ServerAddr: serverAddr,
 	}
 
 
