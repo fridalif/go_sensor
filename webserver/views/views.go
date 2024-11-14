@@ -1,7 +1,6 @@
 package views
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -34,10 +33,7 @@ type RuleMessage struct {
 }
 
 // каналы для синхронизации
-var alertsChanel = make(chan models.Alert)
 var compChanel = make(chan models.IncludedComputer)
-var rulesChanel = make(chan models.Rule)
-var deleteRules = make(chan uint)
 
 var clients = make([]*websocket.Conn, 0)
 var sensors = make([]*websocket.Conn, 0)
@@ -256,6 +252,10 @@ func AddRule(c *gin.Context, db *gorm.DB, authToken string) {
 		c.AbortWithStatus(http.StatusMethodNotAllowed)
 		return
 	}
+	if c.Request.Header.Get("auth_token") != authToken {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
 	var ruleInterface map[string]interface{}
 	if err := c.BindJSON(&ruleInterface); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -344,7 +344,10 @@ func DeleteRule(c *gin.Context, db *gorm.DB, authToken string) {
 		c.AbortWithStatus(http.StatusMethodNotAllowed)
 		return
 	}
-	fmt.Print("hi")
+	if c.Request.Header.Get("auth_token") != authToken {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
 	var ruleInterface map[string]interface{}
 	if err := c.BindJSON(&ruleInterface); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
