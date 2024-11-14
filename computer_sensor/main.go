@@ -6,19 +6,19 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
+
+	"github.com/gookit/config/v2"
 )
 
-func main() {
+var hashRules []string
 
-	//Инициализация логирования
-	logFile, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalln("ERROR:Ошибка при открытии файла:", err)
-	}
-	defer logFile.Close()
-	log.SetOutput(logFile)
+func initRules() {
+	hashRules = append(hashRules, "70f32f84fe08d19204d9e31f7a885451ed9af344")
+}
 
-	file, err := os.Open("testfile.txt")
+func checkFile(filePath string) {
+	file, err := os.Open(filePath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -31,6 +31,47 @@ func main() {
 	}
 
 	hashSum := hasher.Sum(nil)
+	for _, rule := range hashRules {
+		if fmt.Sprintf("%x", hashSum) == rule {
+			fmt.Printf("File %s matches rule %s\n", filePath, rule)
+		}
+	}
+}
 
-	fmt.Printf("SHA-1: %x\n", hashSum)
+func checkDir(checkingDir string) {
+	err := filepath.Walk(checkingDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			checkFile(path)
+		}
+		return nil
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func main() {
+
+	//Инициализация логирования
+	logFile, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalln("ERROR:Ошибка при открытии файла:", err)
+	}
+	defer logFile.Close()
+	log.SetOutput(logFile)
+
+	err = config.LoadFiles("config.json")
+	if err != nil {
+		log.Fatalln("ERROR: Ошибка загрузки конфига:", err)
+	}
+
+	directories := config.StringSlice("directories")
+	initRules()
+	for _, directory := range directories {
+		checkDir(directory)
+	}
+
 }

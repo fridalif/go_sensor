@@ -1,0 +1,4 @@
+{
+    "checking_directories": ["checkingdir"],
+    "checking_interval": 60
+}
