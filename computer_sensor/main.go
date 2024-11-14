@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
+	"time"
 
 	"github.com/gookit/config/v2"
 )
@@ -38,18 +40,22 @@ func checkFile(filePath string) {
 	}
 }
 
-func checkDir(checkingDir string) {
-	err := filepath.Walk(checkingDir, func(path string, info os.FileInfo, err error) error {
+func checkDir(checkingDir string, interval int, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for {
+		err := filepath.Walk(checkingDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() {
+				go checkFile(path)
+			}
+			return nil
+		})
 		if err != nil {
-			return err
+			log.Fatal(err)
 		}
-		if !info.IsDir() {
-			checkFile(path)
-		}
-		return nil
-	})
-	if err != nil {
-		log.Fatal(err)
+		time.Sleep(time.Duration(interval) * time.Second)
 	}
 }
 
@@ -68,10 +74,16 @@ func main() {
 		log.Fatalln("ERROR: Ошибка загрузки конфига:", err)
 	}
 
-	directories := config.StringSlice("directories")
+	directories := config.Strings("checking_directories")
+	interval := config.Int("checking_interval")
+	if interval == 0 {
+		interval = 60
+	}
+	wg := new(sync.WaitGroup)
 	initRules()
 	for _, directory := range directories {
-		checkDir(directory)
+		wg.Add(1)
+		go checkDir(directory, interval, wg)
 	}
-
+	wg.Wait()
 }
