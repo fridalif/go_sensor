@@ -458,13 +458,68 @@ func AddRule(c *gin.Context, db *gorm.DB, authToken string) {
 	for _, compConnection := range clients {
 		if err := compConnection.WriteJSON(message); err != nil {
 			log.Println("Ошибка при отправке сообщения:", err)
-			return
+			continue
 		}
 	}
 	for _, sensor := range sensors {
 		if err := sensor.WriteJSON(message); err != nil {
 			log.Println("Ошибка при отправке сообщения:", err)
-			return
+			continue
+		}
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func AddRuleComputer(c *gin.Context, db *gorm.DB, authToken string) {
+	if c.Request.Method != "POST" {
+		c.AbortWithStatus(http.StatusMethodNotAllowed)
+		return
+	}
+	if c.Request.Header.Get("Auth-Token") != authToken {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	var ruleInterface map[string]interface{}
+	if err := c.BindJSON(&ruleInterface); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	}
+	hashString, exists := ruleInterface["hash"].(string)
+	if !exists {
+		c.AbortWithStatus(http.StatusBadRequest)
+		return
+	}
+	var newRule models.RuleComputer
+	newRule.HashSum = hashString
+	err := db.Create(&newRule).Error
+	if err != nil {
+		response := gin.H{
+			"status":  "error",
+			"message": "Не удалось добавить правило",
+			"data":    nil,
+		}
+		c.JSON(http.StatusBadRequest, response)
+		return
+	}
+	response := gin.H{
+		"status":  "success",
+		"message": "Правило успешно добавлено",
+	}
+
+	message := RuleComputersMessage{
+		TableName: "new_rule_computer",
+		Data:      newRule,
+	}
+	for _, compConnection := range clients {
+		if err := compConnection.WriteJSON(message); err != nil {
+			log.Println("Ошибка при отправке сообщения:", err)
+			continue
+		}
+	}
+	for _, sensor := range sensorsComputers {
+		if err := sensor.WriteJSON(message); err != nil {
+			log.Println("Ошибка при отправке сообщения:", err)
+			continue
 		}
 	}
 
@@ -476,7 +531,7 @@ func DeleteRule(c *gin.Context, db *gorm.DB, authToken string) {
 		c.AbortWithStatus(http.StatusMethodNotAllowed)
 		return
 	}
-	if c.Request.Header.Get("auth_token") != authToken {
+	if c.Request.Header.Get("Auth-Token") != authToken {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
@@ -530,6 +585,67 @@ func DeleteRule(c *gin.Context, db *gorm.DB, authToken string) {
 	}
 	c.JSON(http.StatusOK, response)
 }
+
+func DeleteRuleComputer(c *gin.Context, db *gorm.DB, authToken string) {
+	if c.Request.Method != "DELETE" {
+		c.AbortWithStatus(http.StatusMethodNotAllowed)
+		return
+	}
+	if c.Request.Header.Get("Auth-Token") != authToken {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	var ruleInterface map[string]interface{}
+	if err := c.BindJSON(&ruleInterface); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	}
+	id, exists := ruleInterface["rule_id"].(float64)
+	if !exists {
+		response := gin.H{
+			"status":  "error",
+			"message": "Не указан id правила",
+			"data":    nil,
+		}
+		c.JSON(http.StatusBadRequest, response)
+		return
+	}
+	var rule models.RuleComputer
+	result := db.First(&rule, uint(id))
+	if result.Error != nil {
+		response := gin.H{
+			"status":  "error",
+			"message": "Нет правила с таким id",
+			"data":    nil,
+		}
+		c.JSON(http.StatusBadRequest, response)
+		return
+	}
+	db.Delete(&rule)
+	//deleteRules <- rule.ID
+	message := map[string]interface{}{
+		"TableName": "delete_rule",
+		"Id":        rule.ID,
+	}
+	for _, compConnection := range clients {
+		if err := compConnection.WriteJSON(message); err != nil {
+			log.Println("Ошибка при отправке сообщения:", err)
+			continue
+		}
+	}
+	for _, sensor := range sensorsComputers {
+		if err := sensor.WriteJSON(message); err != nil {
+			log.Println("Ошибка при отправке сообщения:", err)
+			continue
+		}
+	}
+	response := gin.H{
+		"status":  "Success",
+		"message": "Удалено",
+		"data":    nil,
+	}
+	c.JSON(http.StatusOK, response)
+}
+
 func Index(c *gin.Context, db *gorm.DB) {
 	c.HTML(
 		http.StatusOK,

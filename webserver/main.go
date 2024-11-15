@@ -55,7 +55,9 @@ func main() {
 	router.GET("/sensorconn", func(c *gin.Context) { views.GetRules(c, db) })
 	router.GET("/computerconn", func(c *gin.Context) { views.GetRulesComputers(c, db) })
 	router.POST("/api/add_rule", func(c *gin.Context) { views.AddRule(c, db, authToken) })
+	router.POST("/api/add_rule_comp", func(c *gin.Context) { views.AddRule(c, db, authToken) })
 	router.DELETE("/api/delete_rule", func(c *gin.Context) { views.DeleteRule(c, db, authToken) })
+	router.DELETE("/api/delete_rule_comp", func(c *gin.Context) { views.DeleteRule(c, db, authToken) })
 
 	err = router.Run(address + ":" + strconv.Itoa(port))
 	if err != nil {
