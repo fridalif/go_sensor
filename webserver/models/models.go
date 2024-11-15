@@ -90,7 +90,7 @@ func InitDB() (*gorm.DB, error) {
 	if err != nil {
 		return nil, errors.New("не удалось подключиться к базе данных")
 	}
-	err = db.AutoMigrate(&IncludedComputer{}, &Layer{}, &Rule{}, &Alert{})
+	err = db.AutoMigrate(&IncludedComputer{}, &Layer{}, &Rule{}, &Alert{}, &RuleComputer{}, &AlertComputer{})
 	if err != nil {
 		return nil, errors.New("не удалось создать таблицы в базе данных")
 	}

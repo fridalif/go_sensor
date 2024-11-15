@@ -1,1 +1,27 @@
 2024/11/14 10:08:30 lstat checkingDir: no such file or directory
+2024/11/15 20:46:59 websocket: bad handshake
+2024/11/15 20:49:01 websocket: bad handshake
+2024/11/15 20:50:38 websocket: bad handshake
+2024/11/15 20:50:46 websocket: bad handshake
+2024/11/15 21:00:06 ERROR:Ошибка при чтении сообщения: websocket: close 1006 (abnormal closure): unexpected EOF
+2024/11/15 21:18:10 dial tcp 127.0.0.1:9000: connect: connection refused
+2024/11/15 21:26:55 INFO: Получено правило: 1 70f32f84fe08d19204d9e31f7a885451ed9af344
+2024/11/15 21:29:35 ERROR:Ошибка при чтении сообщения: websocket: close 1006 (abnormal closure): unexpected EOF
+2024/11/15 21:29:35 INFO: File checkingdir/file1 matches rule map[hash_sum:70f32f84fe08d19204d9e31f7a885451ed9af344 id:%!s(uint=1)]
+2024/11/15 21:29:46 INFO: Получено правило: 1 70f32f84fe08d19204d9e31f7a885451ed9af344
+2024/11/15 21:30:34 INFO: Получено правило: 1 70f32f84fe08d19204d9e31f7a885451ed9af344
+2024/11/15 21:32:36 ERROR:Ошибка при чтении сообщения: websocket: close 1006 (abnormal closure): unexpected EOF
+2024/11/15 21:32:36 INFO: File checkingdir/file1 matches rule map[hash_sum:70f32f84fe08d19204d9e31f7a885451ed9af344 id:%!s(uint=1)]
+2024/11/15 21:32:45 INFO: Получено правило: 1 70f32f84fe08d19204d9e31f7a885451ed9af344
+2024/11/15 21:34:07 INFO: Получено правило: 1 70f32f84fe08d19204d9e31f7a885451ed9af344
+2024/11/15 21:35:56 INFO: Получено правило: 1 70f32f84fe08d19204d9e31f7a885451ed9af344
+2024/11/15 21:36:39 INFO: Получено правило: 1 70f32f84fe08d19204d9e31f7a885451ed9af344
+2024/11/15 21:37:39 INFO: File checkingdir/file1 matches rule map[hash_sum:70f32f84fe08d19204d9e31f7a885451ed9af344 id:%!s(uint=1)]
+2024/11/15 21:39:07 INFO: Получено правило: 1 70f32f84fe08d19204d9e31f7a885451ed9af344
+2024/11/15 21:40:07 INFO: File checkingdir/file1 matches rule map[hash_sum:70f32f84fe08d19204d9e31f7a885451ed9af344 id:%!s(uint=1)]
+2024/11/15 21:40:33 ERROR:Ошибка при чтении сообщения: websocket: close 1006 (abnormal closure): unexpected EOF
+2024/11/15 21:40:39 INFO: Получено правило: 1 70f32f84fe08d19204d9e31f7a885451ed9af344
+2024/11/15 21:41:39 INFO: File checkingdir/file1 matches rule map[hash_sum:70f32f84fe08d19204d9e31f7a885451ed9af344 id:%!s(uint=1)]
+2024/11/15 21:42:40 INFO: File checkingdir/file1 matches rule map[hash_sum:70f32f84fe08d19204d9e31f7a885451ed9af344 id:%!s(uint=1)]
+2024/11/15 21:42:59 ERROR: Не удалось получить имя таблицы
+2024/11/15 21:43:08 ERROR:Ошибка при чтении сообщения: websocket: close 1006 (abnormal closure): unexpected EOF

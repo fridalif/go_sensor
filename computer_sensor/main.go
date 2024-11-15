@@ -42,8 +42,8 @@ func initRules(conn *websocket.Conn, computerName string) {
 				log.Println("ERROR: Не удалось преобразовать правило в JSON")
 				continue
 			}
-
-			hashRules = append(hashRules, map[string]interface{}{"hash_sum": ruleJSON["hash_sum"].(string), "id": ruleJSON["ID"].(uint)})
+			log.Println("INFO: Получено правило:", uint(ruleJSON["ID"].(float64)), ruleJSON["hash_sum"])
+			hashRules = append(hashRules, map[string]interface{}{"hash_sum": ruleJSON["hash_sum"].(string), "id": uint(ruleJSON["ID"].(float64))})
 		}
 		if tableName == "delete_rule" {
 			var id int
@@ -135,12 +135,14 @@ func main() {
 
 	conn, _, err := websocket.DefaultDialer.Dial(serverUrl, nil)
 	if err != nil {
+		fmt.Println("ERROR: Не удалось подключиться к серверу:", serverUrl)
 		log.Fatal(err)
+
 	}
 	defer conn.Close()
 
 	wg := new(sync.WaitGroup)
-	initRules(conn, computerName)
+	go initRules(conn, computerName)
 	for _, directory := range directories {
 		wg.Add(1)
 		go checkDir(directory, interval, wg, conn)

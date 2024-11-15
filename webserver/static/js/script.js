@@ -71,7 +71,8 @@ function setRules(rules) {
         fetch(`/api/delete_rule`, {
             method: 'DELETE',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Auth-Token':'yatoken'
             },
             body: JSON.stringify({ "rule_id": rules.ID })
         })
@@ -178,10 +179,11 @@ function setRulesComputers(rules) {
     let deleteBut = document.createElement("div");
     deleteBut.className = "deleteButton";
     deleteBut.onclick = function() {
-        fetch(`/api/delete_rule_computer`, {
+        fetch(`/api/delete_rule_comp`, {
             method: 'DELETE',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Auth-Token':'yatoken'
             },
             body: JSON.stringify({ "rule_id": rules.ID })
         })
@@ -222,11 +224,11 @@ function setAlertsComputers(alerts) {
     let time = document.createElement("div");
     time.innerHTML = alerts.Timestamp;   
     let hash = document.createElement("div");
-    hash.innerHTML = alerts.hash_sum;
+    hash.innerHTML = alerts.Rule.hash_sum;
     newElement.appendChild(computer);
     newElement.appendChild(hash);
     newElement.appendChild(time);
-    alertsTable.appendChild(newElement);
+    alertsTable.prepend(newElement);
 }
 
 function onMessage(event) {
@@ -252,7 +254,7 @@ function onMessage(event) {
     if (response.table_name == "new_rule_computer" || response.table_name == "rules_computers") {
         setRulesComputers(response.data);
     }
-    if (response.table_name == "alerts_computers") {
+    if (response.table_name == "alerts_computers" || response.table_name == "new_alerts_computers") {
         setAlertsComputers(response.data);
     }
     console.log(response);

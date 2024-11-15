@@ -6,5 +6,5 @@
     "db_name":"webinterface",
     "db_user":"postgres",
     "db_password":"postgres",
-    "auth_token":"ya_token"
+    "auth_token":"yatoken"
 }

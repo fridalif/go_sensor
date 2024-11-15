@@ -1,6 +1,7 @@
 package views
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -379,12 +380,13 @@ func GetRulesComputers(c *gin.Context, db *gorm.DB) {
 		if err := conn.ReadJSON(&newAlert); err != nil {
 			log.Println("Ошибка при чтении сообщения:", err)
 		}
-		ruleFloat, exists := newAlert["rule_id"].(float64)
+		ruleFloat, exists := newAlert["rule_id"]
 		if !exists {
 			log.Println("ERROR: Не удалось получить ID правила")
 			continue
 		}
-		ruleId := uint(ruleFloat)
+		fmt.Printf("%t", ruleFloat)
+		ruleId := uint(ruleFloat.(float64))
 		var rule models.RuleComputer
 		if err := db.Where("id = ?", ruleId).First(&rule).Error; err != nil {
 			log.Println("ERROR: Правило не найдено:", err)
@@ -519,9 +521,12 @@ func AddRuleComputer(c *gin.Context, db *gorm.DB, authToken string) {
 		return
 	}
 	var ruleInterface map[string]interface{}
+
 	if err := c.BindJSON(&ruleInterface); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
+
 	hashString, exists := ruleInterface["hash"].(string)
 	if !exists {
 		c.AbortWithStatus(http.StatusBadRequest)
@@ -555,6 +560,7 @@ func AddRuleComputer(c *gin.Context, db *gorm.DB, authToken string) {
 		}
 	}
 	for _, sensor := range sensorsComputers {
+
 		if err := sensor.WriteJSON(message); err != nil {
 			log.Println("Ошибка при отправке сообщения:", err)
 			continue
