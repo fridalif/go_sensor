@@ -1,8 +1,3 @@
-function alerting(){
-    alert("Hello World!");
-}
-
-
 function setAlerts(alerts) {
     let alertsTable = document.getElementById("alertsTable");
     let newElement = document.createElement("div");
@@ -78,7 +73,7 @@ function setRules(rules) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ "rule_id": rules.ID }) // Include the payload here
+            body: JSON.stringify({ "rule_id": rules.ID })
         })
         .then(response => response.json())
         .then(data => {
@@ -174,6 +169,66 @@ function newAlert(alerts) {
     newElement.appendChild(ttl);
     alertsTable.prepend(newElement);
 }
+
+function setRulesComputers(rules) {
+    let rulesTable = document.getElementById("rulesTableComputer");
+    let newElement = document.createElement("div");
+    newElement.className = "rulesBlockContentRow";
+    newElement.id = "comp_"+String(rules.ID);
+    let deleteBut = document.createElement("div");
+    deleteBut.className = "deleteButton";
+    deleteBut.onclick = function() {
+        fetch(`/api/delete_rule_computer`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ "rule_id": rules.ID })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status == "Success"){
+                let element = document.getElementById("comp_"+String(rules.ID));
+                element.remove();
+                alert("Правило удалено");
+                return
+            }
+            alert(data.message)
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+
+    }
+    deleteBut.innerHTML = "-";
+
+
+    let hash = document.createElement("div");
+    hash.className = "rulesCellComputer";
+    hash.innerHTML = rules.hash_sum;
+
+    newElement.appendChild(deleteBut);
+    newElement.appendChild(hash);
+    rulesTable.appendChild(newElement);
+}
+
+
+function setAlertsComputers(alerts) {
+    let alertsTable = document.getElementById("alertsTableComputer");
+    let newElement = document.createElement("div");
+    newElement.className = "computersBlockContentRow";
+    let computer = document.createElement("div");
+    computer.innerHTML = alerts.Computer.Name;
+    let time = document.createElement("div");
+    time.innerHTML = alerts.Timestamp;   
+    let hash = document.createElement("div");
+    hash.innerHTML = alerts.hash_sum;
+    newElement.appendChild(computer);
+    newElement.appendChild(hash);
+    newElement.appendChild(time);
+    alertsTable.appendChild(newElement);
+}
+
 function onMessage(event) {
     const response = JSON.parse(event.data);
     if (response.table_name == "alerts") {
@@ -194,9 +249,11 @@ function onMessage(event) {
     if (response.table_name == "new_alerts") {
         newAlert(response.data);
     }
-    if (response.table_name == "delete_rule") {
-        id = response.Id
-        let element = document.getElementById(String(id));
-        element.remove();
+    if (response.table_name == "new_rule_computer" || response.table_name == "rules_computers") {
+        setRulesComputers(response.data);
     }
+    if (response.table_name == "alerts_computers") {
+        setAlertsComputers(response.data);
+    }
+    console.log(response);
 }

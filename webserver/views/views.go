@@ -142,6 +142,44 @@ func WSHandler(c *gin.Context, db *gorm.DB) {
 		}
 	}
 
+	var alertsComputers []models.AlertComputer
+
+	if err := db.Preload("Computer").Preload("Rule").Order("timestamp desc").Find(&alertsComputers).Error; err != nil {
+		log.Println("Ошибка при получении записей:", err)
+		return
+	}
+
+	//Инициализация алертов компьютеров
+	for _, alertComputer := range alertsComputers {
+		message := AlertComputersMessage{
+			TableName: "alerts_computers",
+			Data:      alertComputer,
+		}
+		if err := conn.WriteJSON(message); err != nil {
+			log.Println("Ошибка при отправке сообщения:", err)
+			return
+		}
+	}
+
+	var rulesComputers []models.RuleComputer
+
+	if err := db.Find(&rulesComputers).Error; err != nil {
+		log.Println("Ошибка при получении записей:", err)
+		return
+	}
+
+	//Инициализация правил компьютеров
+	for _, ruleComputer := range rulesComputers {
+		message := RuleComputersMessage{
+			TableName: "rules_computers",
+			Data:      ruleComputer,
+		}
+		if err := conn.WriteJSON(message); err != nil {
+			log.Println("Ошибка при отправке сообщения:", err)
+			return
+		}
+	}
+
 	//Ожидание подключения новых компьютеров или сработок
 	for {
 		computer := <-compChanel

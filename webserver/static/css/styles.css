@@ -141,7 +141,10 @@ body{
     align-items: center;
     justify-content: center;
 }
-
+.rulesCellComputer{
+    width:400px;
+    font-size:16px;
+}
 .alertsHeader{
     font-size:24px;
     height: 40px;
