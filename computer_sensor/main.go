@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gookit/config/v2"
+	"github.com/gorilla/websocket"
 )
 
 var hashRules []string
@@ -76,9 +77,27 @@ func main() {
 
 	directories := config.Strings("checking_directories")
 	interval := config.Int("checking_interval")
+	serverUrl := config.String("serverAddr")
+	computerName := config.String("computerName")
+	if computerName == "" {
+		computerName = "Uzel"
+	}
+	if serverUrl == "" {
+		serverUrl = "ws://127.0.0.1:9000/computerconn"
+	}
 	if interval == 0 {
 		interval = 60
 	}
+
+	conn, _, err := websocket.DefaultDialer.Dial(serverUrl, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+	if err := conn.WriteMessage(websocket.TextMessage, []byte("Hello")); err != nil {
+		log.Fatal(err)
+	}
+
 	wg := new(sync.WaitGroup)
 	initRules()
 	for _, directory := range directories {

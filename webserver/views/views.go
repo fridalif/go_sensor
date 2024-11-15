@@ -32,11 +32,22 @@ type RuleMessage struct {
 	Data      models.Rule `json:"data"`
 }
 
+type AlertComputersMessage struct {
+	TableName string               `json:"table_name"`
+	Data      models.AlertComputer `json:"data"`
+}
+
+type RuleComputersMessage struct {
+	TableName string              `json:"table_name"`
+	Data      models.RuleComputer `json:"data"`
+}
+
 // каналы для синхронизации
 var compChanel = make(chan models.IncludedComputer)
 
 var clients = make([]*websocket.Conn, 0)
 var sensors = make([]*websocket.Conn, 0)
+var sensorsComputers = make([]*websocket.Conn, 0)
 
 func closeSensor(conn *websocket.Conn) {
 	conn.Close()
@@ -47,6 +58,17 @@ func closeSensor(conn *websocket.Conn) {
 		}
 	}
 }
+
+func closeSensorComputer(conn *websocket.Conn) {
+	conn.Close()
+	for i, c := range sensorsComputers {
+		if c == conn {
+			sensors = append(sensors[:i], sensors[i+1:]...)
+			break
+		}
+	}
+}
+
 func closeConn(conn *websocket.Conn) {
 	conn.Close()
 	for i, c := range clients {
@@ -247,12 +269,122 @@ func GetRules(c *gin.Context, db *gorm.DB) {
 	}
 }
 
+func GetRulesComputers(c *gin.Context, db *gorm.DB) {
+	var rules []models.RuleComputer
+	if err := db.Preload("Netlayer").Find(&rules).Error; err != nil {
+		log.Println("Ошибка при получении записей:", err)
+		return
+	}
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		log.Println("Ошибка при установлении WebSocket-соединения:", err)
+		return
+	}
+	sensorsComputers = append(sensorsComputers, conn)
+	defer closeSensorComputer(conn)
+	var newComp = map[string]interface{}{}
+	if err := conn.ReadJSON(&newComp); err != nil {
+		log.Println("Ошибка при чтении сообщения:", err)
+		return
+	}
+	var computers []models.IncludedComputer
+	if err := db.Find(&computers).Error; err != nil {
+		log.Println("Ошибка при получении записей:", err)
+		return
+	}
+
+	var found bool = false
+	var address string = c.Request.RemoteAddr
+	for _, computer := range computers {
+		if computer.Address == address {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		newComputerModel := models.IncludedComputer{
+			Name:    newComp["name"].(string),
+			Address: address,
+		}
+		if err := db.Create(&newComputerModel).Error; err != nil {
+			log.Println("Ошибка при создании записи:", err)
+			return
+		}
+		select {
+		case compChanel <- newComputerModel:
+		default:
+			log.Println("Ошибка: канал compChanel переполнен или закрыт")
+		}
+	}
+
+	var myComputer models.IncludedComputer
+	if err := db.Where("address = ?", address).First(&myComputer).Error; err != nil {
+		log.Println("ERROR: Компьютер не найден:", err)
+		return
+	}
+	//Инициализация правил
+	for _, rule := range rules {
+		message := RuleComputersMessage{
+			TableName: "rules",
+			Data:      rule,
+		}
+		if err := conn.WriteJSON(message); err != nil {
+			log.Println("Ошибка при отправке сообщения:", err)
+			return
+		}
+	}
+
+	//вечный цикл
+	for {
+		var newAlert = map[string]interface{}{}
+		if err := conn.ReadJSON(&newAlert); err != nil {
+			log.Println("Ошибка при чтении сообщения:", err)
+		}
+		ruleFloat, exists := newAlert["rule_id"].(float64)
+		if !exists {
+			log.Println("ERROR: Не удалось получить ID правила")
+			continue
+		}
+		ruleId := uint(ruleFloat)
+		var rule models.RuleComputer
+		if err := db.Where("id = ?", ruleId).First(&rule).Error; err != nil {
+			log.Println("ERROR: Правило не найдено:", err)
+			continue
+		}
+		newAlertModel := models.AlertComputer{
+			ComputerID: myComputer.ID,
+			Computer:   myComputer,
+			RuleID:     rule.ID,
+			Rule:       rule,
+			Timestamp:  time.Now(),
+		}
+		if timestamp, exists := newAlert["timestamp"].(time.Time); exists {
+			newAlertModel.Timestamp = timestamp
+		}
+		if err := db.Create(&newAlertModel).Error; err != nil {
+			log.Println("ERROR: Ошибка при создании записи:", err)
+			continue
+		}
+		message := AlertComputersMessage{
+			TableName: "new_alerts_computers",
+			Data:      newAlertModel,
+		}
+		for _, compConnection := range clients {
+			if err := compConnection.WriteJSON(message); err != nil {
+				log.Println("Ошибка при отправке сообщения:", err)
+				return
+			}
+		}
+	}
+}
+
 func AddRule(c *gin.Context, db *gorm.DB, authToken string) {
 	if c.Request.Method != "POST" {
 		c.AbortWithStatus(http.StatusMethodNotAllowed)
 		return
 	}
-	if c.Request.Header.Get("auth_token") != authToken {
+	if c.Request.Header.Get("Auth-Token") != authToken {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
