@@ -14,13 +14,56 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var hashRules []string
+var hashRules []map[string]interface{}
 
-func initRules() {
-	hashRules = append(hashRules, "70f32f84fe08d19204d9e31f7a885451ed9af344")
+func initRules(conn *websocket.Conn, computerName string) {
+	err := conn.WriteJSON(map[string]interface{}{
+		"name": computerName,
+	})
+	if err != nil {
+		log.Fatalln("ERROR: Не получилось отпраивть идентификационные данные серверу:", err)
+		return
+	}
+
+	for {
+		var serverMessage = map[string]interface{}{}
+		if err := conn.ReadJSON(&serverMessage); err != nil {
+			log.Println("ERROR:Ошибка при чтении сообщения:", err)
+			return
+		}
+		tableName, exists := serverMessage["table_name"]
+		if !exists {
+			log.Println("ERROR: Не удалось получить имя таблицы")
+			continue
+		}
+		if tableName == "rules" || tableName == "new_rule" {
+			var ruleJSON map[string]interface{}
+			if ruleJSON, exists = serverMessage["data"].(map[string]interface{}); !exists {
+				log.Println("ERROR: Не удалось преобразовать правило в JSON")
+				continue
+			}
+
+			hashRules = append(hashRules, map[string]interface{}{"hash_sum": ruleJSON["hash_sum"].(string), "id": ruleJSON["ID"].(uint)})
+		}
+		if tableName == "delete_rule" {
+			var id int
+			if id, exists = serverMessage["Id"].(int); !exists {
+				log.Println("ERROR: Не удалось преобразовать правило в JSON")
+				continue
+			}
+
+			for i, rule := range hashRules {
+				if rule["id"] == uint(id) {
+					hashRules = append(hashRules[:i], hashRules[i+1:]...)
+					log.Printf("INFO: Правило %d было удалено", id)
+					break
+				}
+			}
+		}
+	}
 }
 
-func checkFile(filePath string) {
+func checkFile(filePath string, conn *websocket.Conn) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		log.Fatal(err)
@@ -35,13 +78,14 @@ func checkFile(filePath string) {
 
 	hashSum := hasher.Sum(nil)
 	for _, rule := range hashRules {
-		if fmt.Sprintf("%x", hashSum) == rule {
-			fmt.Printf("File %s matches rule %s\n", filePath, rule)
+		if fmt.Sprintf("%x", hashSum) == rule["hash_sum"] {
+			log.Printf("INFO: File %s matches rule %s\n", filePath, rule)
+			conn.WriteJSON(map[string]interface{}{"rule_id": rule["id"]})
 		}
 	}
 }
 
-func checkDir(checkingDir string, interval int, wg *sync.WaitGroup) {
+func checkDir(checkingDir string, interval int, wg *sync.WaitGroup, conn *websocket.Conn) {
 	defer wg.Done()
 	for {
 		err := filepath.Walk(checkingDir, func(path string, info os.FileInfo, err error) error {
@@ -49,7 +93,7 @@ func checkDir(checkingDir string, interval int, wg *sync.WaitGroup) {
 				return err
 			}
 			if !info.IsDir() {
-				go checkFile(path)
+				go checkFile(path, conn)
 			}
 			return nil
 		})
@@ -94,15 +138,12 @@ func main() {
 		log.Fatal(err)
 	}
 	defer conn.Close()
-	if err := conn.WriteMessage(websocket.TextMessage, []byte("Hello")); err != nil {
-		log.Fatal(err)
-	}
 
 	wg := new(sync.WaitGroup)
-	initRules()
+	initRules(conn, computerName)
 	for _, directory := range directories {
 		wg.Add(1)
-		go checkDir(directory, interval, wg)
+		go checkDir(directory, interval, wg, conn)
 	}
 	wg.Wait()
 }

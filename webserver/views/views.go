@@ -271,7 +271,7 @@ func GetRules(c *gin.Context, db *gorm.DB) {
 
 func GetRulesComputers(c *gin.Context, db *gorm.DB) {
 	var rules []models.RuleComputer
-	if err := db.Preload("Netlayer").Find(&rules).Error; err != nil {
+	if err := db.Find(&rules).Error; err != nil {
 		log.Println("Ошибка при получении записей:", err)
 		return
 	}

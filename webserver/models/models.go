@@ -37,7 +37,7 @@ type Rule struct {
 
 type RuleComputer struct {
 	gorm.Model
-	HashSum string `gorm:"unique;not null"`
+	HashSum string `gorm:"unique;not null" json:"hash_sum"`
 }
 
 type AlertComputer struct {
