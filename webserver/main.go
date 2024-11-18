@@ -63,4 +63,6 @@ func main() {
 	if err != nil {
 		log.Fatalln("ERROR: Ошибка запуска сервера:", err)
 	}
+	log.Println("INFO: webserver запущен")
+	defer log.Println("INFO: webserver остановлен")
 }

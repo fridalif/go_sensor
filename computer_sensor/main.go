@@ -140,7 +140,8 @@ func main() {
 
 	}
 	defer conn.Close()
-
+	log.Println("INFO: Программа запущена")
+	defer log.Println("INFO: Программа завершена")
 	wg := new(sync.WaitGroup)
 	go initRules(conn, computerName)
 	for _, directory := range directories {
